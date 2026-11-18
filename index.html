@@ -129,16 +129,39 @@
       .fld output{font-family:var(--mono);font-size:12px;min-width:64px;color:var(--tx)}
       .fld input[type=range]{width:130px}
 
-      /* fx chain */
+      /* fx chain — 直列チェーンの各段は独立ユニット（ON/OFF・並び替え・段別プリセット・複製・たたむ） */
       .fxwrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
-      .chain{width:238px;flex:none;display:flex;flex-direction:column;gap:6px}
-      .fxitem{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);
-        border-radius:8px;padding:5px 7px;cursor:pointer}
+      .fxwrap button{min-height:38px}
+      .chain{width:312px;max-width:100%;flex:none;display:flex;flex-direction:column;gap:8px}
+      .fxitem{display:flex;gap:8px;background:var(--bg2);border:1px solid var(--line);
+        border-radius:10px;padding:8px;cursor:pointer;align-items:flex-start}
       .fxitem.sel{border-color:var(--acc)}
-      .fxitem.off{opacity:.5}
-      .fxitem .t{font-weight:600;flex:1;white-space:nowrap;overflow:hidden}
-      .fxitem button{min-height:28px;height:28px;padding:0 7px;font-size:11px}
+      .fxitem.off{opacity:.55}
+      .fxnum{flex:none;width:24px;height:24px;border-radius:50%;background:var(--bg);border:1px solid var(--line);
+        display:grid;place-items:center;font-family:var(--mono);font-size:12px;margin-top:2px}
+      .fxitem.sel .fxnum,.fxhead .fxnum{background:var(--acc);border-color:var(--acc);color:#fff}
+      .fxmeta{flex:1;min-width:0}
+      .fxmeta .t{font-weight:700;font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .fxsum{display:block;color:var(--tx2);font-size:11.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .fxacts{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+      .fxitem button{min-width:38px;padding:0 9px;font-size:12px}
+      .fxpower{font-weight:700;min-width:54px;flex:none}
+      .fxpower.on{background:var(--teal);border-color:var(--teal);color:#04231d}
       .fxeditor{flex:1;min-width:300px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:12px}
+      .fxeditor h3{margin:0 0 10px;font-size:13px}
+      .fxhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+      .fxhead .ttl{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+      .fxhead .acts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+      .fxhead .acts button{padding:0 12px}
+      .fxpresetbar{border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:9px 0;margin-bottom:12px}
+      .fxpresetbar .cap{font-size:11px;color:var(--tx2);font-weight:700;letter-spacing:.04em}
+      .fxchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+      .fxchips button{padding:5px 12px;font-size:12.5px}
+      .fxchips button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+      .fxchips .uchip{display:flex;gap:3px}
+      .fxchips .uchip button[data-udel]{min-width:34px;padding:0 6px;color:var(--tx3)}
+      .fxusersave{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+      .fxusersave input{flex:1;min-width:140px;min-height:38px}
       .fxeditor h3{margin:0 0 10px;font-size:13px}
       #eqCanvas{width:100%;height:190px;display:block;background:var(--bg);border:1px solid var(--line2);border-radius:8px;touch-action:none}
       table.params{border-collapse:collapse;width:100%}
@@ -165,10 +188,40 @@
       .strip .mini label{font-size:10px;color:var(--tx2);display:flex;justify-content:space-between}
       .strip .mini input[type=range]{width:100%}
       .strip.ret{border-style:dashed}
+      .strip .route{font-size:10.5px;color:var(--tx2);text-align:center;line-height:1.45;word-break:break-all}
+      .strip select{width:100%;min-height:34px;font-size:12px}
+      .strip .sumbtn{min-height:34px;font-size:11.5px;padding:0 8px}
+      .strip.off{opacity:.55}
+      /* stage3: clip units + mix preset bar */
+      .clipchain{display:flex;flex-direction:column;gap:8px;min-width:280px;max-width:420px;flex:1}
+      .clipitem{display:flex;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;align-items:flex-start}
+      .clipitem.sel{border-color:var(--acc)}
+      .clipitem.off{opacity:.55}
+      .clipitem button{min-height:38px;min-width:38px;padding:0 9px;font-size:12px}
+      .mixbar{border:1px solid var(--line2);border-radius:10px;background:var(--bg2);padding:10px 12px;margin-bottom:12px}
+      .mixbar .cap{font-size:11px;color:var(--tx2);font-weight:700;letter-spacing:.04em}
+      .mixbar .fxchips button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+      .clip.muted{opacity:.45;filter:grayscale(.5)}
       .dropveil{position:fixed;inset:0;background:rgba(20,30,60,.55);z-index:50;display:none;place-items:center;
         color:#fff;font-size:20px;font-weight:700;border:4px dashed var(--blue)}
       .dropveil.show{display:grid}
-      .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bg3);color:var(--tx);
+      /* ---------- bottom fixed transport ---------- */
+      body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+      .bottombar{position:fixed;left:0;right:0;bottom:0;z-index:55;
+        display:flex;align-items:center;justify-content:center;gap:10px;
+        padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));
+        background:var(--bg2);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.28)}
+      .bottombar .tbtn{flex:none}
+      .bar-time{font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;
+        padding:4px 12px;min-width:172px;text-align:center;line-height:1.3}
+      .bar-time .big{font-size:17px;letter-spacing:.04em}
+      .bar-time .sub{font-size:11px;color:var(--tx2)}
+      @media (max-width:760px){
+        .bar-time{min-width:138px;padding:4px 8px}
+        .bar-time .big{font-size:15px}
+        .bottombar{gap:7px;padding-left:8px;padding-right:8px}
+      }
+      .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--bg3);color:var(--tx);
         border:1px solid var(--line);border-radius:9px;padding:9px 16px;box-shadow:var(--shadow);z-index:60;display:none;max-width:88vw;pointer-events:none}
       .confirmveil{position:fixed;inset:0;background:rgba(10,12,18,.62);z-index:70;display:grid;place-items:center;padding:16px}
       .confirmveil[hidden]{display:none}
@@ -182,8 +235,35 @@
       .pitchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
       #pitchCanvas{width:100%;height:280px;display:block;background:var(--bg);border:1px solid var(--line2);border-radius:8px;touch-action:none}
       .pitchinfo{font-family:var(--mono);font-size:12px;color:var(--tx)}
+      /* non-destructive pitch layer */
+      .layerstack{display:flex;flex-direction:column;gap:0;margin:0 0 12px;max-width:1020px}
+      .layercard{display:flex;gap:12px;align-items:flex-start;background:var(--bg2);border:1px solid var(--line2);padding:10px 12px}
+      .layercard:first-child{border-radius:10px 10px 0 0}
+      .layercard:last-child{border-radius:0 0 10px 10px}
+      .layercard + .layercard{border-top:0}
+      .layercard.src{opacity:.92}
+      .layercard.active{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+      .layercard.off{opacity:.62}
+      .layer-ico{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:8px;background:var(--bg);border:1px solid var(--line);font-size:16px}
+      .layer-main{flex:1;min-width:0}
+      .layer-main b{font-size:13px}
+      .layer-main p{margin:3px 0 0;color:var(--tx2);font-size:12px;line-height:1.55}
+      .layer-arrow{align-self:center;color:var(--tx3);font-size:14px;line-height:1;padding:2px 0 2px 22px}
+      .strengthrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+      .strengthrow input[type=range]{width:180px}
+      .presetchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+      .presetchips button{font-size:12px;padding:4px 10px}
+      .presetchips button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+      .pitch-details{margin-top:10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg2);padding:0 12px}
+      .pitch-details summary{cursor:pointer;padding:9px 0;font-weight:600;color:var(--tx2)}
+      .pitch-details p,.pitch-details li{color:var(--tx2);line-height:1.65}
+      .pitch-details ul{margin:6px 0 10px;padding-left:20px}
+      .clipbadge{position:absolute;right:6px;bottom:5px;font-size:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:2px 7px;pointer-events:none}
       @media (max-width:760px){
         .tlgrid{grid-template-columns:132px 1fr}
+        .chain{width:100%}
+        .fxeditor{min-width:0;width:100%}
+        .fxhead .acts{margin-left:0}
         .thead{height:84px;padding:6px}
         .lane{height:84px}
         .clip{height:68px}
@@ -282,6 +362,17 @@
       </div>
     </div>
 
+    <!-- bottom fixed transport -->
+    <div class="bottombar" role="region" aria-label="固定トランスポート">
+      <button class="tbtn" id="btnBarReturn" title="先頭へ (Home)">|◀</button>
+      <button class="tbtn play" id="btnBarPlay" title="再生 / 一時停止 (Space)">▶</button>
+      <button class="tbtn" id="btnBarStop" title="停止して先頭へ">■</button>
+      <div class="bar-time">
+        <div class="big" id="barTimeBig">0:00.000</div>
+        <div class="sub"><span id="barTimeBar">1小節 1拍</span> ・ <span id="barTimeLen">0:00</span></div>
+      </div>
+    </div>
+
     <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac" multiple hidden>
     <div class="dropveil" id="dropVeil">ここに音声ファイルをドロップ</div>
     <div class="toast" id="toast"></div>
@@ -318,21 +409,178 @@ const S={
   selTrack:null, selClip:null, selFx:-1,
   loop:{on:false,start:0,end:8},
   autoMode:"off", snap:true, px:42,
-  returns:null, demoLoaded:false,
+  returns:null, demoLoaded:false, userFxPresets:{}, userMixPresets:[],
+  revMuted:false, dlyMuted:false, selBus:null,
 };
 
-function defaultFx(type){
-  if(type==="eq") return {type,on:true,bands:[
-    {t:"highpass",f:80,g:0,q:0.71,on:true},
-    {t:"peaking",f:250,g:0,q:1.0,on:true},
-    {t:"peaking",f:1000,g:0,q:1.0,on:true},
-    {t:"peaking",f:3500,g:0,q:1.0,on:true},
-    {t:"highshelf",f:9000,g:0,q:0.71,on:true}]};
-  if(type==="comp") return {type,on:true,threshold:-18,ratio:3,attack:0.01,release:0.25,knee:18,makeup:0};
-  if(type==="reverb") return {type,on:true,decay:2.4,mix:0.3,predelay:0.02};
-  if(type==="delay") return {type,on:true,time:0.375,feedback:0.35,mix:0.25,sync:"d8"};
-  return null;
+/* ============================================================
+   エフェクト段モジュール（第2段リファクタ）
+   ------------------------------------------------------------
+   ノード化はしない。代わりに直列チェーンの各段を独立ユニットにする:
+   - 段の種類ごとに 定義（初期値）/ プリセット / 要約 を FXDEF に登録する
+   - 段は ON/OFF・並び替え・複製・初期値リセット・折りたたみ が独立に効く
+   - プリセットは段の種類ごとに適用でき、ユーザープリセットは
+     セッション内（メモリ）だけに保持する
+   新しい段の種類を足すときは FXDEF に1エントリ追加すればよい。
+   ============================================================ */
+function delaySyncSec(sync,bpm){ const b=60/(bpm||120); return {"4":b,"d8":b*0.75,"8":b/2,"16":b/4,"t8":b/3}[sync]||null; }
+const FXDEF={
+  eq:{ name:"パラメトリックEQ",
+    make(){ return {type:"eq",on:true,bands:[
+      {t:"highpass",f:80,g:0,q:0.71,on:true},
+      {t:"peaking",f:250,g:0,q:1.0,on:true},
+      {t:"peaking",f:1000,g:0,q:1.0,on:true},
+      {t:"peaking",f:3500,g:0,q:1.0,on:true},
+      {t:"highshelf",f:9000,g:0,q:0.71,on:true}]}; },
+    summary(fx){ const onN=fx.bands.filter(b=>b.on).length;
+      const hp=fx.bands[0]&&fx.bands[0].on?("HPF "+Math.round(fx.bands[0].f)+"Hz ・ "):"";
+      let pk=null; fx.bands.forEach(b=>{ if(b.on&&Math.abs(b.g)>0&&(!pk||Math.abs(b.g)>Math.abs(pk.g))) pk=b; });
+      return hp+(pk?("最大 "+(pk.g>0?"+":"")+pk.g.toFixed(1)+"dB @ "+(pk.f>=1000?(pk.f/1000)+"k":Math.round(pk.f))+"Hz"):"フラット")+"（"+onN+"/5バンド）"; },
+    presets:[
+      {id:"flat",label:"フラット",apply(){}},
+      {id:"vocal",label:"ボーカル基本",apply(f){ f.bands[0].f=90; f.bands[1].g=-1; f.bands[3].g=2.5; f.bands[4].g=1.5; }},
+      {id:"lowcut",label:"ローカットのみ",apply(f){ f.bands[0].f=110; }},
+      {id:"air",label:"抜け・エアー",apply(f){ f.bands[1].g=-2; f.bands[3].f=4000; f.bands[3].g=3; f.bands[4].g=4; }},
+      {id:"demud",label:"こもり解消",apply(f){ f.bands[0].f=100; f.bands[1].g=-3.5; f.bands[1].q=1.4; f.bands[2].f=800; f.bands[2].g=1; f.bands[3].g=2; }},
+    ]},
+  comp:{ name:"コンプレッサー",
+    make(){ return {type:"comp",on:true,threshold:-18,ratio:3,attack:0.01,release:0.25,knee:18,makeup:0}; },
+    summary(fx){ return fx.threshold.toFixed(0)+"dB ・ "+fx.ratio.toFixed(1)+":1"+(fx.makeup>0?" ・ MU +"+fx.makeup.toFixed(1)+"dB":""); },
+    presets:[
+      {id:"std",label:"歌ってみた標準",apply(){}},
+      {id:"light",label:"軽く整える",apply(f){ f.threshold=-14; f.ratio=2; f.attack=0.02; f.release=0.3; f.knee=24; }},
+      {id:"strong",label:"しっかり潰す",apply(f){ f.threshold=-24; f.ratio=5; f.attack=0.005; f.release=0.18; f.knee=12; f.makeup=3; }},
+      {id:"ballad",label:"バラード（ゆっくり）",apply(f){ f.threshold=-16; f.ratio=2.5; f.attack=0.03; f.release=0.4; f.knee=30; }},
+    ]},
+  reverb:{ name:"リバーブ",
+    make(){ return {type:"reverb",on:true,decay:2.4,mix:0.3,predelay:0.02}; },
+    summary(fx){ return fx.decay.toFixed(1)+"秒 ・ Mix "+Math.round(fx.mix*100)+"%"; },
+    presets:[
+      {id:"plate",label:"プレート（標準）",apply(){}},
+      {id:"room",label:"小さな部屋",apply(f){ f.decay=0.9; f.predelay=0.005; f.mix=0.22; }},
+      {id:"hall",label:"ホール",apply(f){ f.decay=4.2; f.predelay=0.04; f.mix=0.35; }},
+      {id:"subtle",label:"うっすら",apply(f){ f.decay=1.8; f.predelay=0.01; f.mix=0.15; }},
+    ]},
+  delay:{ name:"ディレイ",
+    make(){ return {type:"delay",on:true,time:0.375,feedback:0.35,mix:0.25,sync:"d8"}; },
+    summary(fx){ const s={off:"","4":"4分同期","d8":"付点8分同期","8":"8分同期","16":"16分同期","t8":"8分三連同期"}[fx.sync]||"";
+      return Math.round(fx.time*1000)+"ms ・ FB "+Math.round(fx.feedback*100)+"% ・ Mix "+Math.round(fx.mix*100)+"%"+(s?" ・ "+s:""); },
+    presets:[
+      {id:"dotted",label:"付点8分（BPM同期）",apply(f,bpm){ f.sync="d8"; f.time=delaySyncSec("d8",bpm); f.feedback=0.35; f.mix=0.25; }},
+      {id:"eighth",label:"8分ディレイ",apply(f,bpm){ f.sync="8"; f.time=delaySyncSec("8",bpm); f.feedback=0.3; f.mix=0.2; }},
+      {id:"slap",label:"スラップ",apply(f){ f.sync="off"; f.time=0.09; f.feedback=0.08; f.mix=0.18; }},
+      {id:"long",label:"ロング（4分・反復多め）",apply(f,bpm){ f.sync="4"; f.time=delaySyncSec("4",bpm); f.feedback=0.5; f.mix=0.22; }},
+    ]},
+};
+function defaultFx(type){ const d=FXDEF[type]; return d?d.make():null; }
+function fxSnapshot(fx){ const c=JSON.parse(JSON.stringify(fx)); delete c.on; delete c.collapsed; return c; }
+function fxPresetKey(type,preset){ const f=defaultFx(type); preset.apply(f,S.bpm); return JSON.stringify(fxSnapshot(f)); }
+function setFxParams(fx,data){ const on=fx.on, col=fx.collapsed; for(const k of Object.keys(fx)) delete fx[k];
+  Object.assign(fx,JSON.parse(JSON.stringify(data))); fx.on=on; if(col!=null) fx.collapsed=col; }
+function applyFxPreset(tr,i,preset){
+  const fx=tr.fx[i]; if(!fx) return;
+  if(preset.data){ setFxParams(fx,preset.data); }
+  else { const f=defaultFx(fx.type); preset.apply(f,S.bpm); setFxParams(fx,f); }
+  applyFxLive(tr,i,true); renderInspector();
+  toast("プリセット「"+preset.label+"」を "+FXDEF[fx.type].name+" に適用しました");
 }
+/* ============================================================
+   クリップ／ルーティング・モジュール（第3段リファクタ）
+   ------------------------------------------------------------
+   第1段（ピッチ層）・第2段（FX段）と同じ規律を、クリップと
+   ミキサー／ルーティングにも適用する:
+   - クリップは独立ユニット: 選択・ミュート（無効化）・複製・削除・
+     プリセットがクリップ単位で効く。編集（トリム／ゲイン／フェード／
+     ミュート）はパラメータだけを変え、原音バッファは書き換えない
+     （＝クリップ編集も非破壊レイヤー。ピッチ層とは別に重なる）。
+   - バス／リターンは独立ユニット: ON/OFF（ミュート）・音量・パン・
+     要約表示を持ち、トラックの送り先はミキサー側からも変えられる。
+   - ミキサー全体にはプリセット（組み込み＋ユーザー保存＝
+     セッション内のみ）を置き、フェーダー／パン／センド／バス／
+     リターンをまとめて呼び出せる。初期値・既定の配線は従来と同一。
+   ============================================================ */
+const CLIP_PRESETS=[
+  {id:"plain",label:"標準（フェードなし）",apply(c){ c.gain=0; c.fadeIn=0; c.fadeOut=0; }},
+  {id:"click",label:"クリック除去（10ms）",apply(c){ c.fadeIn=Math.min(0.01,c.dur/4); c.fadeOut=Math.min(0.01,c.dur/4); }},
+  {id:"smooth",label:"滑らかに入り・抜ける",apply(c){ c.fadeIn=Math.min(0.08,c.dur/4); c.fadeOut=Math.min(0.15,c.dur/4); }},
+  {id:"longfade",label:"ロングフェード",apply(c){ c.fadeIn=Math.min(0.4,c.dur/3); c.fadeOut=Math.min(0.8,c.dur/3); }},
+  {id:"down3",label:"ゲイン −3dB",apply(c){ c.gain=-3; }},
+  {id:"up3",label:"ゲイン +3dB",apply(c){ c.gain=3; }},
+];
+function clipSummary(cl){
+  if(!cl) return "";
+  const parts=[cl.start.toFixed(2)+"s → "+(cl.start+cl.dur).toFixed(2)+"s（"+cl.dur.toFixed(2)+"s）",
+    "ゲイン "+fmtDb(cl.gain||0)];
+  if(cl.fadeIn>0||cl.fadeOut>0) parts.push("フェード "+(cl.fadeIn||0).toFixed(2)+"/"+(cl.fadeOut||0).toFixed(2)+"s");
+  if(cl.muted) parts.push("ミュート中");
+  const L=(typeof pitchLayer==="function")?pitchLayer(cl):null;
+  if(L) parts.push("ピッチ層 "+(L.enabled?"ON":"OFF")+" "+L.notes.length+"ノート");
+  return parts.join(" ・ ");
+}
+function clipPresetMatch(cl,p){ const c={gain:cl.gain||0,fadeIn:cl.fadeIn||0,fadeOut:cl.fadeOut||0,dur:cl.dur}; p.apply(c);
+  return Math.abs(c.gain-(cl.gain||0))<1e-9&&Math.abs(c.fadeIn-(cl.fadeIn||0))<1e-9&&Math.abs(c.fadeOut-(cl.fadeOut||0))<1e-9; }
+function applyClipPreset(cl,p){ p.apply(cl); renderTimeline(); renderInspector(); if(S.playing) startSources(currentPos());
+  toast("クリッププリセット「"+p.label+"」を適用しました（原音は不変）"); }
+function duplicateClip(tr,cl){
+  const nc={id:nid(),name:cl.name+" (複製)",buffer:cl.buffer,sourceBuffer:cl.sourceBuffer||cl.buffer,
+    start:cl.start+cl.dur,offset:cl.offset,dur:cl.dur,gain:cl.gain||0,fadeIn:cl.fadeIn||0,fadeOut:cl.fadeOut||0,muted:!!cl.muted};
+  const L=(typeof pitchLayer==="function")?pitchLayer(cl):null;
+  if(L){ nc.pitchLayer=JSON.parse(JSON.stringify(L)); nc.pitchLayer.notes.forEach(n=>n.id=nid()); }
+  tr.clips.splice(tr.clips.indexOf(cl)+1,0,nc); tr.clips.sort((a,b)=>a.start-b.start);
+  S.selClip=nc.id; renderTimeline(); renderInspector(); if(S.playing) startSources(currentPos());
+  toast("クリップを複製しました（原音バッファは共有＝非破壊）");
+  return nc;
+}
+/* --- ミキサー・プリセット（トラック種別ごとに効く組み込み＋全体スナップショット保存） --- */
+function applyMixLiveAll(){
+  if(!S.ctx) return; const t=S.ctx.currentTime;
+  S.tracks.forEach(tr=>{ if(!tr.nodes) return;
+    tr.nodes.fader.gain.setTargetAtTime(db2lin(tr.vol),t,0.03);
+    tr.nodes.pan.pan.setTargetAtTime(tr.pan,t,0.03);
+    tr.nodes.sRev.gain.setTargetAtTime(tr.sendRev,t,0.03);
+    tr.nodes.sDly.gain.setTargetAtTime(tr.sendDly,t,0.03); });
+  S.buses.forEach(b=>{ if(b.nodes){ b.nodes.g.gain.setTargetAtTime(b.muted?0:db2lin(b.vol),t,0.03); b.nodes.p.pan.setTargetAtTime(b.pan,t,0.03); } });
+  if(S.returns){ S.returns.revOut.gain.setTargetAtTime(S.revMuted?0:0.9,t,0.03); S.returns.dlyOut.gain.setTargetAtTime(S.dlyMuted?0:0.8,t,0.03); }
+}
+const MIX_PRESETS=[
+  {id:"std",label:"歌ってみた標準",apply(){ S.tracks.forEach(tr=>{
+      if(tr.type==="vocal"){ tr.vol=-2; tr.sendRev=0.30; tr.sendDly=0.08; }
+      else if(tr.type==="harmony"){ tr.vol=-9; tr.sendRev=0.35; tr.sendDly=0; }
+      else { tr.vol=-6; tr.sendRev=0.05; tr.sendDly=0; } }); }},
+  {id:"front",label:"ボーカル前面",apply(){ S.tracks.forEach(tr=>{
+      if(tr.type==="vocal"){ tr.vol=0; tr.sendRev=0.22; }
+      else if(tr.type==="harmony"){ tr.vol=-12; tr.sendRev=0.3; }
+      else { tr.vol=-9; tr.sendRev=0.04; } }); }},
+  {id:"wide",label:"ハモリ広め",apply(){ S.tracks.forEach(tr=>{
+      if(tr.type==="harmony"){ tr.vol=-7; tr.pan=(tr.pan===0?0.3:tr.pan); tr.sendRev=0.4; }
+      else if(tr.type==="vocal"){ tr.vol=-2; tr.pan=0; } }); }},
+  {id:"dry",label:"ドライ（センド最小）",apply(){ S.tracks.forEach(tr=>{ tr.sendRev=Math.min(tr.sendRev,0.06); tr.sendDly=0; }); }},
+  {id:"wet",label:"ウェット（空間広め）",apply(){ S.tracks.forEach(tr=>{ if(tr.type!=="inst"){ tr.sendRev=Math.max(tr.sendRev,0.42); } }); if(S.returns) S.returns.decay=Math.max(S.returns.decay,3.4); }},
+];
+function mixSnapshot(){
+  return { tracks:S.tracks.map(tr=>({id:tr.id,vol:tr.vol,pan:tr.pan,sendRev:tr.sendRev,sendDly:tr.sendDly,mute:tr.mute,solo:tr.solo,bus:tr.bus})),
+    buses:S.buses.map(b=>({id:b.id,vol:b.vol,pan:b.pan,muted:!!b.muted})),
+    ret:S.returns?{decay:S.returns.decay,dlyTime:S.returns.dlyTime,dlyFb:S.returns.dlyFb}:null,
+    revMuted:S.revMuted, dlyMuted:S.dlyMuted };
+}
+function applyMixSnapshot(d){
+  if(!d) return;
+  (d.tracks||[]).forEach(sv=>{ const tr=S.tracks.find(t=>t.id===sv.id); if(!tr) return;
+    tr.vol=sv.vol; tr.pan=sv.pan; tr.sendRev=sv.sendRev; tr.sendDly=sv.sendDly; tr.mute=sv.mute; tr.solo=sv.solo; tr.bus=sv.bus; refreshTrackOut(tr); });
+  (d.buses||[]).forEach(sv=>{ const b=S.buses.find(x=>x.id===sv.id); if(!b) return; b.vol=sv.vol; b.pan=sv.pan||0; b.muted=!!sv.muted; });
+  if(d.ret&&S.returns){ S.returns.decay=d.ret.decay; S.returns.dlyTime=d.ret.dlyTime; S.returns.dlyFb=d.ret.dlyFb;
+    S.returns.conv.buffer=makeIR(S.ctx,d.ret.decay); S.returns.dly.delayTime.value=d.ret.dlyTime; S.returns.fb.gain.value=d.ret.dlyFb; }
+  S.revMuted=!!d.revMuted; S.dlyMuted=!!d.dlyMuted;
+  applyMixLiveAll(); renderTimeline(); renderInspector(); if(S.playing) startSources(currentPos());
+}
+function busSummary(b){
+  const n=S.tracks.filter(t=>t.bus===b.id).length;
+  return n+" トラック → マスター ・ "+fmtDb(b.vol)+" ・ "+panLabel(b.pan||0)+(b.muted?" ・ ミュート中":"");
+}
+const RET_PRESETS={
+  rev:[ {id:"rstd",label:"プレート標準",decay:2.6}, {id:"rroom",label:"小さな部屋",decay:1.0}, {id:"rhall",label:"ホール",decay:4.4}, {id:"rsub",label:"うっすら",decay:1.7} ],
+  dly:[ {id:"dstd",label:"付点8分相当",time:0.375,fb:0.34}, {id:"dslap",label:"スラップ",time:0.09,fb:0.08}, {id:"dlong",label:"ロング反復",time:0.5,fb:0.55} ],
+};
 function newTrack(name,type){
   const tr={id:nid(),name,type:type||"vocal",color:TYPES[type||"vocal"].color,
     clips:[],vol:-3,pan:0,mute:false,solo:false,bus:null,
@@ -341,7 +589,7 @@ function newTrack(name,type){
     auto:{volume:[],pan:[]}, nodes:null};
   return tr;
 }
-function newBus(name){return {id:nid(),name,vol:0,pan:0};}
+function newBus(name){return {id:nid(),name,vol:0,pan:0,muted:false};}
 S.buses.push(newBus("ボーカルバス"));
 
 /* ---------- audio engine ---------- */
@@ -367,10 +615,10 @@ function makeIR(ctx,decay){
 }
 function buildReturns(ctx,dest,live){
   const revIn=ctx.createGain(), conv=ctx.createConvolver(), revOut=ctx.createGain();
-  conv.buffer=makeIR(ctx,2.6); revOut.gain.value=0.9;
+  conv.buffer=makeIR(ctx,2.6); revOut.gain.value=S.revMuted?0:0.9;
   revIn.connect(conv); conv.connect(revOut); revOut.connect(dest);
   const dlyIn=ctx.createGain(), dly=ctx.createDelay(2), fb=ctx.createGain(), flt=ctx.createBiquadFilter(), dlyOut=ctx.createGain();
-  dly.delayTime.value=0.375; fb.gain.value=0.34; flt.type="lowpass"; flt.frequency.value=4200; dlyOut.gain.value=0.8;
+  dly.delayTime.value=0.375; fb.gain.value=0.34; flt.type="lowpass"; flt.frequency.value=4200; dlyOut.gain.value=S.dlyMuted?0:0.8;
   dlyIn.connect(dly); dly.connect(flt); flt.connect(fb); fb.connect(dly); flt.connect(dlyOut); dlyOut.connect(dest);
   const R={revIn,conv,revOut,dlyIn,dly,fb,dlyOut,decay:2.6,dlyTime:0.375,dlyFb:0.34};
   if(live) S.returns=R;
@@ -386,7 +634,7 @@ function buildBusGraph(b){
   const ctx=S.ctx; if(!ctx) return;
   const input=ctx.createGain(), g=ctx.createGain(), p=ctx.createStereoPanner();
   input.connect(g); g.connect(p); p.connect(S.master);
-  g.gain.value=db2lin(b.vol); p.pan.value=b.pan;
+  g.gain.value=b.muted?0:db2lin(b.vol); p.pan.value=b.pan;
   b.nodes={input,g,p};
 }
 function fxNodes(ctx,fx){
@@ -497,6 +745,7 @@ function startSources(fromPos){
     else { pp.cancelScheduledValues(now); pp.setValueAtTime(0,now); }
     if(!audible) return;
     tr.clips.forEach(cl=>{
+      if(cl.muted) return;
       const cEnd=cl.start+cl.dur;
       if(cEnd<=fromPos) return;
       const src=ctx.createBufferSource(); src.buffer=clipBuffer(cl);
@@ -523,11 +772,13 @@ function play(){
   if(S.playing){ pause(); return; }
   if(S.pos>=projectEnd()-0.05) S.pos=0;
   startSources(S.pos); S.playing=true; $("#btnPlay").textContent="❚❚"; $("#btnPlay").classList.add("playing");
+  const bp=$("#btnBarPlay"); if(bp){ bp.textContent="❚❚"; bp.classList.add("playing"); }
 }
 function pause(){
   if(!S.playing) return;
   S.pos=currentPos(); stopSources(); S.playing=false;
   $("#btnPlay").textContent="▶"; $("#btnPlay").classList.remove("playing");
+  const bp2=$("#btnBarPlay"); if(bp2){ bp2.textContent="▶"; bp2.classList.remove("playing"); }
 }
 function stopAll(){ pause(); S.pos=0; updatePlayhead(); }
 function currentPos(){
@@ -735,10 +986,15 @@ function renderTimeline(){
     ln.style.backgroundImage=`repeating-linear-gradient(to right, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent ${beatSec()*S.px}px),
       repeating-linear-gradient(to right, var(--gridbar) 0, var(--gridbar) 1px, transparent 1px, transparent ${beatSec()*4*S.px}px)`;
     tr.clips.forEach(cl=>{
-      const el=document.createElement("div"); el.className="clip"+(cl.id===S.selClip?" sel":"");
+      const el=document.createElement("div"); el.className="clip"+(cl.id===S.selClip?" sel":"")+(cl.muted?" muted":"");
       el.style.left=(cl.start*S.px)+"px"; el.style.width=Math.max(8,cl.dur*S.px)+"px";
       el.style.background=`linear-gradient(180deg, ${tr.color}cc, ${tr.color}88)`;
-      el.innerHTML=`<canvas></canvas><div class="cap">${esc(cl.name)}</div><div class="edge l"></div><div class="edge r"></div>`;
+      el.title=clipSummary(cl);
+      const _pl=pitchLayer(cl); const _active=_pl&&_pl.enabled&&_pl.notes.some(n=>Math.abs(effectiveShift(n,_pl))>1e-4);
+      const _badges=[cl.muted?`<span class="clipbadge" style="right:auto;left:6px;background:rgba(120,20,10,.8)">ミュート</span>`:"",
+        (cl.gain||0)!==0?`<span class="clipbadge" style="bottom:22px">${fmtDb(cl.gain||0)}</span>`:"",
+        _active?`<span class="clipbadge">ピッチ補正 ${Math.round((_pl.strength==null?1:_pl.strength)*100)}%</span>`:_pl?`<span class="clipbadge" style="opacity:.75">ピッチ ${_pl.enabled?"解析済":"OFF"}</span>`:""].join("");
+      el.innerHTML=`<canvas></canvas><div class="cap">${esc(cl.name)}</div>${_badges}<div class="edge l"></div><div class="edge r"></div>`;
       el.addEventListener("pointerdown",e=>clipPointer(e,tr,cl,el));
       ln.appendChild(el);
       requestAnimationFrame(()=>drawWave(el.querySelector("canvas"),cl));
@@ -882,23 +1138,41 @@ function chHTML(){
     <p class="small">センドはリターン側のリバーブ／ディレイへ送る量です。バスにまとめると複数トラックへ一括で同じ処理をかけられます。</p>
   </div>
   <div class="sect"><h3>バス</h3>
-    ${S.buses.map(b=>`<div class="fld"><label style="width:110px">${esc(b.name)}</label><input type="range" data-bus="${b.id}" class="busVol" min="-60" max="6" step="0.5" value="${b.vol}"><output>${fmtDb(b.vol)}</output></div>`).join("")}
+    ${S.buses.map(b=>`<div class="fld"><label style="width:110px">${esc(b.name)}</label><input type="range" data-bus="${b.id}" class="busVol" min="-60" max="6" step="0.5" value="${b.vol}"><output>${fmtDb(b.vol)}</output><button data-busmute="${b.id}" class="msbtn m ${b.muted?"on":""}" title="バスをミュート">M</button><span class="small">${S.tracks.filter(t=>t.bus===b.id).length} trk</span></div>`).join("")}
     <div class="fld"><input type="text" id="newBusName" placeholder="新しいバス名" style="width:130px"><button id="btnAddBus">バス追加</button></div>
     <h3 style="margin-top:16px">リターン（センド先）</h3>
     <div class="fld"><label>リバーブ残響</label><input type="range" id="retDecay" min="0.4" max="6" step="0.1" value="${S.returns?S.returns.decay:2.6}"><output>${(S.returns?S.returns.decay:2.6).toFixed(1)} 秒</output></div>
     <div class="fld"><label>ディレイ時間</label><input type="range" id="retDlyT" min="0.03" max="1" step="0.005" value="${S.returns?S.returns.dlyTime:0.375}"><output>${Math.round((S.returns?S.returns.dlyTime:0.375)*1000)} ms</output></div>
     <div class="fld"><label>ディレイ反復</label><input type="range" id="retDlyF" min="0" max="0.85" step="0.01" value="${S.returns?S.returns.dlyFb:0.34}"><output>${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</output></div>
   </div>`;
+  /* --- クリップ一覧: 各クリップは独立ユニット（選択・ミュート・複製・削除・要約） --- */
+  h+=`<div class="sect clipchain"><h3>クリップ — ${esc(tr.name)}（独立ユニット）</h3>
+  <p class="small" style="margin:0">編集はパラメータだけを変え、原音は書き換わりません。畳んでも要約で状態が分かります。</p>
+  ${tr.clips.length?tr.clips.map((c,i)=>`<div class="clipitem ${c.id===S.selClip?"sel":""} ${c.muted?"off":""}" data-clip="${c.id}">
+    <span class="fxnum">${i+1}</span>
+    <div class="fxmeta"><span class="t">${esc(c.name)}</span><span class="fxsum">${esc(clipSummary(c))}</span>
+    <div class="fxacts"><button data-cact="dup" title="このクリップを複製">複製</button><button data-cact="del" title="このクリップを削除">✕</button></div></div>
+    <button data-cact="mute" class="fxpower ${c.muted?"":"on"}" title="このクリップだけ ON/OFF（ミュート）">${c.muted?"OFF":"ON"}</button></div>`).join(""):"<p class='small'>このトラックにクリップはありません</p>"}
+  </div>`;
   if(cl){
-    h+=`<div class="sect"><h3>選択クリップ — ${esc(cl.name)}</h3>
-    <div class="fld"><label>開始位置</label><input type="number" id="clStart" step="0.01" min="0" value="${cl.start.toFixed(2)}"><span class="small">秒</span></div>
+    h+=`<div class="sect" style="min-width:min(300px,100%);flex:1"><h3>選択クリップ — ${esc(cl.name)}</h3>
+    <div class="layerstack" style="margin-bottom:10px">
+      <div class="layercard src"><div class="layer-ico">♪</div><div class="layer-main"><b>原音（ソース）</b><span class="badge" style="background:#5b7a2a;margin-left:6px">常に保持</span><p>元音源オフセット ${cl.offset.toFixed(2)} 秒 — トリム／ゲイン／フェードでは書き換わりません。</p></div></div>
+      <div class="layer-arrow">↓ &nbsp;パラメータだけを重ねる</div>
+      <div class="layercard ${cl.muted?"off":"active"}"><div class="layer-ico">✂</div><div class="layer-main"><b>クリップ編集レイヤー</b> ${cl.muted?`<span class="badge" style="background:#6e7488;margin-left:6px">ミュート中</span>`:""}
+      <p>${esc(clipSummary(cl))}</p></div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex:none"><button id="clMuteBtn">${cl.muted?"ミュート解除":"ミュート"}</button><button id="clDupBtn" class="ghost">複製</button></div></div>
+    </div>
+    <div class="fxpresetbar"><span class="cap">このクリップのプリセット（ゲイン／フェード）</span>
+      <div class="fxchips">${CLIP_PRESETS.map(p=>`<button data-clippreset="${p.id}" class="${clipPresetMatch(cl,p)?"on":""}">${p.label}</button>`).join("")}</div></div>
+    ${cl.collapsed?`<p class="small">このクリップの編集欄はたたまれています。音は現在の設定のまま流れます。<button id="clExpandBtn" style="margin-left:6px">開く</button></p>`:`<div class="fld"><label>開始位置</label><input type="number" id="clStart" step="0.01" min="0" value="${cl.start.toFixed(2)}"><span class="small">秒</span><button id="clCollapseBtn" class="ghost" style="margin-left:auto">たたむ</button></div>
     <div class="fld"><label>ゲイン</label><input type="range" id="clGain" min="-24" max="12" step="0.5" value="${cl.gain||0}"><output>${fmtDb(cl.gain||0)}</output></div>
     <div class="fld"><label>フェードイン</label><input type="number" id="clFI" step="0.01" min="0" max="${cl.dur}" value="${(cl.fadeIn||0).toFixed(2)}"><span class="small">秒</span></div>
     <div class="fld"><label>フェードアウト</label><input type="number" id="clFO" step="0.01" min="0" max="${cl.dur}" value="${(cl.fadeOut||0).toFixed(2)}"><span class="small">秒</span></div>
     <div class="fld"><button id="clSplit2">再生位置で分割</button><button id="clDel2">クリップ削除</button></div>
-    <p class="small">長さ ${(cl.dur).toFixed(2)} 秒 / 元音源オフセット ${cl.offset.toFixed(2)} 秒</p></div>`;
+    <p class="small">長さ ${(cl.dur).toFixed(2)} 秒 / 元音源オフセット ${cl.offset.toFixed(2)} 秒</p>`}</div>`;
   } else {
-    h+=`<div class="sect"><h3>クリップ</h3><p class="small">タイムライン上のクリップをクリックすると、ゲインやフェードを編集できます。分割は再生ヘッド位置で行います（<span class="kbd">S</span>）。</p></div>`;
+    h+=`<div class="sect"><h3>クリップ</h3><p class="small">左の一覧かタイムライン上のクリップをクリックすると、ゲインやフェードを編集できます。分割は再生ヘッド位置で行います（<span class="kbd">S</span>）。</p></div>`;
   }
   return h+"</div>";
 }
@@ -918,7 +1192,16 @@ function wireCh(){
     if(tr.nodes)tr.nodes.sDly.gain.setTargetAtTime(tr.sendDly,S.ctx.currentTime,0.03); });
   $$(".busVol").forEach(el=>el.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===el.dataset.bus);
     b.vol=parseFloat(el.value); el.nextElementSibling.textContent=fmtDb(b.vol);
-    if(b.nodes)b.nodes.g.gain.setTargetAtTime(db2lin(b.vol),S.ctx.currentTime,0.03); }));
+    if(b.nodes)b.nodes.g.gain.setTargetAtTime(b.muted?0:db2lin(b.vol),S.ctx.currentTime,0.03); }));
+  $$("[data-busmute]").forEach(btn=>btn.addEventListener("click",()=>{ const b=S.buses.find(x=>x.id===btn.dataset.busmute); if(!b) return;
+    b.muted=!b.muted; if(b.nodes&&S.ctx) b.nodes.g.gain.setTargetAtTime(b.muted?0:db2lin(b.vol),S.ctx.currentTime,0.03); renderInspector(); }));
+  /* クリップ一覧（独立ユニット）: 選択・ミュート・複製・削除 */
+  $$(".clipitem").forEach(item=>{ const cid=item.dataset.clip;
+    item.addEventListener("click",e=>{ const act=e.target.dataset&&e.target.dataset.cact; const c=tr.clips.find(x=>x.id===cid); if(!c) return;
+      if(act==="mute"){ c.muted=!c.muted; renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos()); return; }
+      if(act==="dup"){ duplicateClip(tr,c); return; }
+      if(act==="del"){ S.selClip=cid; deleteSelected(); return; }
+      if(!act){ S.selClip=cid; renderTimeline(); renderInspector(); } }); });
   const ab=$("#btnAddBus"); if(ab) ab.onclick=()=>{ const nm=($("#newBusName").value||"バス").trim();
     const b=newBus(nm); S.buses.push(b); if(S.ctx)buildBusGraph(b); renderInspector(); toast("バス「"+nm+"」を追加しました"); };
   R("#retDecay",e=>{ const v=parseFloat(e.target.value); e.target.nextElementSibling.textContent=v.toFixed(1)+" 秒";
@@ -932,6 +1215,11 @@ function wireCh(){
     R("#clGain",e=>{ cl.gain=parseFloat(e.target.value); e.target.nextElementSibling.textContent=fmtDb(cl.gain); if(S.playing)startSources(currentPos()); });
     R("#clFI",e=>{ cl.fadeIn=clamp(parseFloat(e.target.value)||0,0,cl.dur); renderTimeline(); if(S.playing)startSources(currentPos()); });
     R("#clFO",e=>{ cl.fadeOut=clamp(parseFloat(e.target.value)||0,0,cl.dur); renderTimeline(); if(S.playing)startSources(currentPos()); });
+    $$("[data-clippreset]").forEach(b=>b.addEventListener("click",()=>{ const p=CLIP_PRESETS.find(x=>x.id===b.dataset.clippreset); if(p) applyClipPreset(cl,p); }));
+    const mb=$("#clMuteBtn"); if(mb) mb.onclick=()=>{ cl.muted=!cl.muted; renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos()); };
+    const dp=$("#clDupBtn"); if(dp) dp.onclick=()=>duplicateClip(fc.tr,cl);
+    const cb=$("#clCollapseBtn"); if(cb) cb.onclick=()=>{ cl.collapsed=true; renderInspector(); };
+    const eb=$("#clExpandBtn"); if(eb) eb.onclick=()=>{ cl.collapsed=false; renderInspector(); };
     const sp=$("#clSplit2"); if(sp) sp.onclick=splitSelected;
     const dl=$("#clDel2"); if(dl) dl.onclick=deleteSelected;
   }
@@ -943,20 +1231,28 @@ const FXNAMES={eq:"パラメトリックEQ",comp:"コンプレッサー",reverb:
 function fxHTML(){
   const tr=selTrackObj(); if(!tr) return "<p class='small'>トラックがありません</p>";
   if(S.selFx>=tr.fx.length) S.selFx=tr.fx.length-1;
+  if(S.selFx<0&&tr.fx.length) S.selFx=0;
   const chain=tr.fx.map((fx,i)=>`<div class="fxitem ${i===S.selFx?"sel":""} ${fx.on?"":"off"}" data-i="${i}" draggable="true">
-    <span class="t">${FXNAMES[fx.type]}</span>
-    <button data-act="up" title="前へ">↑</button><button data-act="down" title="後へ">↓</button>
-    <button data-act="on">${fx.on?"ON":"OFF"}</button><button data-act="del">✕</button></div>`).join("");
-  let ed="<p class='small'>左のリストからエフェクトを選ぶと、ここでパラメータを編集できます。接続順はドラッグまたは ↑↓ で並び替えできます。</p>";
+    <span class="fxnum">${i+1}</span>
+    <div class="fxmeta"><span class="t">${FXNAMES[fx.type]}</span><span class="fxsum">${esc(FXDEF[fx.type].summary(fx))}</span>
+    <div class="fxacts"><button data-act="up" title="前へ移動">↑</button><button data-act="down" title="後へ移動">↓</button><button data-act="del" title="この段を削除">✕</button></div></div>
+    <button data-act="on" class="fxpower ${fx.on?"on":""}" title="この段だけ ON/OFF">${fx.on?"ON":"OFF"}</button></div>`).join("");
+  let ed="";
   const fx=tr.fx[S.selFx];
-  if(fx){
-    if(fx.type==="eq") ed=eqEditorHTML(fx);
-    else if(fx.type==="comp") ed=compEditorHTML(fx);
-    else if(fx.type==="reverb") ed=knobEditorHTML("リバーブ（インサート）",[
+  if(!fx){
+    ed="<p class='small'>左のリストから段を選ぶと、ここでパラメータを編集できます。各段は独立していて、ON/OFF・並び替え・段ごとのプリセット・複製・折りたたみができます。</p>";
+  } else {
+    ed=fxStageHeadHTML(tr,fx,S.selFx);
+    if(fx.collapsed){
+      ed+=`<p class="small">この段はたたまれています。音は現在の設定（${esc(FXDEF[fx.type].summary(fx))}）のまま流れます。編集するときは「開く」を押してください。</p>`;
+    }
+    else if(fx.type==="eq") ed+=eqEditorHTML(fx);
+    else if(fx.type==="comp") ed+=compEditorHTML(fx);
+    else if(fx.type==="reverb") ed+=knobEditorHTML("リバーブ（インサート）",[
       {k:"decay",label:"残響時間 Decay",min:0.3,max:7,step:0.1,val:fx.decay,unit:" 秒",fmt:v=>v.toFixed(1)},
       {k:"predelay",label:"プリディレイ",min:0,max:0.15,step:0.005,val:fx.predelay,unit:" ms",fmt:v=>Math.round(v*1000)},
       {k:"mix",label:"ミックス Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
-    else if(fx.type==="delay") ed=knobEditorHTML("ディレイ（インサート）",[
+    else if(fx.type==="delay") ed+=knobEditorHTML("ディレイ（インサート）",[
       {k:"time",label:"時間 Time",min:0.02,max:1.2,step:0.005,val:fx.time,unit:" ms",fmt:v=>Math.round(v*1000)},
       {k:"feedback",label:"フィードバック",min:0,max:0.85,step:0.01,val:fx.feedback,unit:"%",fmt:v=>Math.round(v*100)},
       {k:"mix",label:"ミックス Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}])+
@@ -964,11 +1260,30 @@ function fxHTML(){
         ${[["off","同期しない"],["4","4分音符"],["d8","付点8分"],["8","8分音符"],["16","16分音符"],["t8","8分三連"]].map(([v,l])=>`<option value="${v}" ${fx.sync===v?"selected":""}>${l}</option>`).join("")}</select>
         <span class="small">BPM ${S.bpm} に同期した時間をセットします</span></div>`;
   }
-  return `<div class="fxwrap"><div class="chain"><h3 style="margin:0 0 4px;font-size:12px;color:var(--tx2)">インサート — ${esc(tr.name)}</h3>
+  return `<div class="fxwrap"><div class="chain"><h3 style="margin:0 0 4px;font-size:12px;color:var(--tx2)">インサート — ${esc(tr.name)}（直列チェーン）</h3>
+    <p class="small" style="margin:0 0 2px">音は上の段から順に流れます。各段は独立ユニットで、要約は常にここに出ます。</p>
     ${chain||"<p class='small'>エフェクトなし</p>"}
     <div class="fld" style="margin-top:6px"><select id="addFxType"><option value="eq">EQ</option><option value="comp">コンプレッサー</option><option value="reverb">リバーブ</option><option value="delay">ディレイ</option></select>
-    <button id="btnAddFx">＋ 追加</button></div></div>
+    <button id="btnAddFx">＋ 段を追加</button></div></div>
     <div class="fxeditor">${ed}</div></div>`;
+}
+function fxStageHeadHTML(tr,fx,i){
+  const def=FXDEF[fx.type];
+  const curKey=JSON.stringify(fxSnapshot(fx));
+  const chips=def.presets.map(p=>`<button data-fxpreset="${p.id}" class="${fxPresetKey(fx.type,p)===curKey?"on":""}">${p.label}</button>`).join("");
+  const uchips=(S.userFxPresets[fx.type]||[]).map((p,ui)=>`<span class="uchip"><button data-ufxpreset="${ui}" class="${JSON.stringify(fxSnapshot(p.data))===curKey?"on":""}">${esc(p.label)}</button><button data-udel="${ui}" title="このプリセットを削除" aria-label="プリセットを削除">✕</button></span>`).join("");
+  return `<div class="fxhead"><span class="ttl"><span class="fxnum">${i+1}</span>${def.name}<span class="badge" style="background:${fx.on?"#2f8f6e":"#6e7488"}">${fx.on?"ON":"OFF"}</span></span>
+    <span class="small">段 ${i+1} / ${tr.fx.length}</span>
+    <div class="acts">
+      <button data-sact="collapse">${fx.collapsed?"開く":"たたむ"}</button>
+      <button data-sact="dup">複製</button>
+      <button data-sact="reset">初期値に戻す</button>
+      <button data-sact="del">削除</button>
+    </div></div>
+  <div class="fxpresetbar"><span class="cap">この段のプリセット</span>
+    <div class="fxchips">${chips}${uchips}</div>
+    <div class="fxusersave"><input type="text" id="fxPresetName" placeholder="マイプリセット名" maxlength="24"><button id="btnSaveFxPreset">現在の設定を保存</button><span class="small">保存はこのセッション内のみ</span></div>
+  </div>`;
 }
 function eqEditorHTML(fx){
   const rows=fx.bands.map((b,i)=>`<tr>
@@ -1016,7 +1331,28 @@ function wireFx(){
       if(isNaN(from)||from===i) return; const [m]=tr.fx.splice(from,1); tr.fx.splice(i,0,m); S.selFx=i; applyFxLive(tr,i,true); renderInspector(); });
   });
   const add=$("#btnAddFx"); if(add) add.onclick=()=>{ tr.fx.push(defaultFx($("#addFxType").value)); S.selFx=tr.fx.length-1; applyFxLive(tr,S.selFx,true); renderInspector(); };
-  const fx=tr.fx[S.selFx]; if(!fx) return;
+  /* 段ヘッダー: たたむ・複製・初期値・削除（選択中の段だけに効く独立操作） */
+  $$("[data-sact]").forEach(b=>b.addEventListener("click",()=>{
+    const act=b.dataset.sact, i=S.selFx, fx=tr.fx[i]; if(!fx) return;
+    if(act==="collapse"){ fx.collapsed=!fx.collapsed; renderInspector(); }
+    else if(act==="dup"){ const c=JSON.parse(JSON.stringify(fx)); c.collapsed=false; tr.fx.splice(i+1,0,c); S.selFx=i+1; applyFxLive(tr,i+1,true); renderInspector(); toast(FXNAMES[fx.type]+" を複製しました"); }
+    else if(act==="reset"){ setFxParams(fx,defaultFx(fx.type)); applyFxLive(tr,i,true); renderInspector(); toast("段を初期値に戻しました"); }
+    else if(act==="del"){ tr.fx.splice(i,1); S.selFx=-1; applyFxLive(tr,i,true); renderInspector(); }
+  }));
+  /* 段プリセット: 組み込み＋ユーザー保存（セッション内） */
+  $$("[data-fxpreset]").forEach(b=>b.addEventListener("click",()=>{ const fx=tr.fx[S.selFx]; if(!fx) return;
+    const p=FXDEF[fx.type].presets.find(x=>x.id===b.dataset.fxpreset); if(p) applyFxPreset(tr,S.selFx,p); }));
+  $$("[data-ufxpreset]").forEach(b=>b.addEventListener("click",()=>{ const fx=tr.fx[S.selFx]; if(!fx) return;
+    const p=(S.userFxPresets[fx.type]||[])[+b.dataset.ufxpreset]; if(p) applyFxPreset(tr,S.selFx,{label:p.label,data:p.data}); }));
+  $$("[data-udel]").forEach(b=>b.addEventListener("click",()=>{ const fx=tr.fx[S.selFx]; if(!fx) return;
+    const arr=S.userFxPresets[fx.type]||[]; const rm=arr.splice(+b.dataset.udel,1)[0]; renderInspector();
+    if(rm) toast("プリセット「"+rm.label+"」を削除しました"); }));
+  const sv=$("#btnSaveFxPreset");
+  if(sv) sv.onclick=()=>{ const fx=tr.fx[S.selFx]; if(!fx) return;
+    const nm=($("#fxPresetName").value||"").trim()||(FXNAMES[fx.type]+" "+((S.userFxPresets[fx.type]||[]).length+1));
+    (S.userFxPresets[fx.type]=S.userFxPresets[fx.type]||[]).push({label:nm,data:fxSnapshot(fx)});
+    renderInspector(); toast("プリセット「"+nm+"」を保存しました（このセッション内）"); };
+  const fx=tr.fx[S.selFx]; if(!fx||fx.collapsed) return;
   if(fx.type==="eq") wireEq(tr,fx);
   else if(fx.type==="comp"){ $$(".knob input").forEach(inp=>inp.addEventListener("input",()=>{
     fx[inp.dataset.k]=parseFloat(inp.value); inp.nextElementSibling.textContent=compFmt(inp.dataset.k,fx[inp.dataset.k]);
@@ -1099,49 +1435,97 @@ function drawEq(cv,fx){
 
 /* ----- ミキサー ----- */
 function mixHTML(){
-  const strip=(tr)=>`<div class="strip ${tr.id===S.selTrack?"sel":""}" data-tid="${tr.id}">
+  const curSnap=JSON.stringify(mixSnapshot());
+  const mixChips=MIX_PRESETS.map(p=>`<button data-mixpreset="${p.id}">${p.label}</button>`).join("");
+  const uChips=(S.userMixPresets||[]).map((p,ui)=>`<span class="uchip"><button data-umixpreset="${ui}" class="${JSON.stringify(p.data)===curSnap?"on":""}">${esc(p.label)}</button><button data-umixdel="${ui}" title="このプリセットを削除" aria-label="プリセットを削除">✕</button></span>`).join("");
+  const bar=`<div class="mixbar"><span class="cap">ミキサー・プリセット（フェーダー／パン／センド／バス／リターンをまとめて呼ぶ）</span>
+    <div class="fxchips">${mixChips}${uChips}</div>
+    <div class="fxusersave"><input type="text" id="mixPresetName" placeholder="マイプリセット名" maxlength="24"><button id="btnSaveMixPreset">現在のミックスを保存</button><span class="small">保存はこのセッション内のみ</span></div></div>`;
+  const strip=(tr)=>{ const fxOn=tr.fx.filter(f=>f.on).length;
+    return `<div class="strip ${tr.id===S.selTrack?"sel":""}" data-tid="${tr.id}">
     <span class="dot" style="background:${tr.color}"></span><div class="nm">${esc(tr.name)}</div>
+    <div class="route">${tr.clips.length}クリップ ・ FX ${fxOn}/${tr.fx.length}段ON<br>自動 ${tr.auto.volume.length+tr.auto.pan.length}点</div>
     <div class="mini"><label>REVセンド <span>${Math.round(tr.sendRev*100)}%</span></label><input type="range" data-k="sendRev" min="0" max="100" value="${Math.round(tr.sendRev*100)}"></div>
     <div class="mini"><label>DLYセンド <span>${Math.round(tr.sendDly*100)}%</span></label><input type="range" data-k="sendDly" min="0" max="100" value="${Math.round(tr.sendDly*100)}"></div>
     <div class="mini"><label>PAN <span>${panLabel(tr.pan)}</span></label><input type="range" data-k="pan" min="-100" max="100" value="${Math.round(tr.pan*100)}"></div>
     <input type="range" class="vfader" data-k="vol" min="-60" max="6" step="0.5" value="${tr.vol}">
-    <div class="small" style="font-family:var(--mono)">${fmtDb(tr.vol)}</div>
+    <div class="small" data-volval style="font-family:var(--mono)">${fmtDb(tr.vol)}</div>
     <div style="display:flex;gap:5px"><button class="msbtn m ${tr.mute?"on":""}" data-k="mute">M</button><button class="msbtn s ${tr.solo?"on":""}" data-k="solo">S</button></div>
-    <div class="small">${tr.bus?(esc((S.buses.find(b=>b.id===tr.bus)||{}).name||"")):"マスター"}</div></div>`;
-  const busStrip=b=>`<div class="strip ret"><div class="nm">BUS<br>${esc(b.name)}</div>
+    <label class="small" style="align-self:flex-start">送り先</label>
+    <select data-k="route" title="送り先バス"><option value="">マスターへ直接</option>${S.buses.map(b=>`<option value="${b.id}" ${tr.bus===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"><button class="sumbtn" data-jump="ch">チャンネル</button><button class="sumbtn" data-jump="fx">FX</button></div></div>`; };
+  const busStrip=b=>`<div class="strip ret ${b.muted?"off":""}"><div class="nm">BUS<br>${esc(b.name)}</div>
+    <div class="route">${esc(busSummary(b))}</div>
+    <div class="mini"><label>PAN <span>${panLabel(b.pan||0)}</span></label><input type="range" data-buspan="${b.id}" min="-100" max="100" value="${Math.round((b.pan||0)*100)}"></div>
     <input type="range" class="vfader" data-bus="${b.id}" min="-60" max="6" step="0.5" value="${b.vol}">
-    <div class="small" style="font-family:var(--mono)">${fmtDb(b.vol)}</div><div class="small">→ マスター</div></div>`;
-  const ret=`<div class="strip ret"><div class="nm">RETURN<br>リバーブ</div>
+    <div class="small" style="font-family:var(--mono)">${fmtDb(b.vol)}</div>
+    <div style="display:flex;gap:5px"><button class="msbtn m ${b.muted?"on":""}" data-busmute2="${b.id}" title="バスをミュート">M</button><button class="sumbtn" data-busdel="${b.id}" title="バスを削除（割り当て中のトラックはマスターへ戻ります）">削除</button></div>
+    <div class="small">→ マスター</div></div>`;
+  const retRev=`<div class="strip ret ${S.revMuted?"off":""}"><div class="nm">RETURN<br>リバーブ</div>
+    <div class="route">${S.revMuted?"ミュート中 ・ ":""}残響 ${(S.returns?S.returns.decay:2.6).toFixed(1)}秒</div>
     <div class="mini"><label>残響 <span>${(S.returns?S.returns.decay:2.6).toFixed(1)}秒</span></label><input type="range" data-ret="decay" min="0.4" max="6" step="0.1" value="${S.returns?S.returns.decay:2.6}"></div>
-    <div class="nm" style="margin-top:8px">RETURN<br>ディレイ</div>
+    <div class="fxchips" style="justify-content:center">${RET_PRESETS.rev.map(p=>`<button data-retpreset="rev:${p.id}" class="${Math.abs((S.returns?S.returns.decay:2.6)-p.decay)<0.05?"on":""}">${p.label}</button>`).join("")}</div>
+    <button class="fxpower ${S.revMuted?"":"on"}" data-rettoggle="rev" style="min-height:38px">${S.revMuted?"OFF":"ON"}</button></div>`;
+  const retDly=`<div class="strip ret ${S.dlyMuted?"off":""}"><div class="nm">RETURN<br>ディレイ</div>
+    <div class="route">${S.dlyMuted?"ミュート中 ・ ":""}${Math.round((S.returns?S.returns.dlyTime:0.375)*1000)}ms ・ 反復 ${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</div>
     <div class="mini"><label>時間 <span>${Math.round((S.returns?S.returns.dlyTime:0.375)*1000)}ms</span></label><input type="range" data-ret="dlyTime" min="0.03" max="1" step="0.005" value="${S.returns?S.returns.dlyTime:0.375}"></div>
-    <div class="mini"><label>反復 <span>${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</span></label><input type="range" data-ret="dlyFb" min="0" max="0.85" step="0.01" value="${S.returns?S.returns.dlyFb:0.34}"></div></div>`;
-  return `<div class="mixer">${S.tracks.map(strip).join("")}${S.buses.map(busStrip).join("")}${ret}</div>
-  <p class="small">各トラック →（インサートFX → オートメーション → フェーダー）→ バス or マスター。リバーブ／ディレイはセンド量だけがリターンへ送られます。</p>`;
+    <div class="mini"><label>反復 <span>${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</span></label><input type="range" data-ret="dlyFb" min="0" max="0.85" step="0.01" value="${S.returns?S.returns.dlyFb:0.34}"></div>
+    <div class="fxchips" style="justify-content:center">${RET_PRESETS.dly.map(p=>`<button data-retpreset="dly:${p.id}">${p.label}</button>`).join("")}</div>
+    <button class="fxpower ${S.dlyMuted?"":"on"}" data-rettoggle="dly" style="min-height:38px">${S.dlyMuted?"OFF":"ON"}</button></div>`;
+  return `${bar}<div class="mixer">${S.tracks.map(strip).join("")}${S.buses.map(busStrip).join("")}${retRev}${retDly}</div>
+  <p class="small">配線: 各トラック →（クリップ編集 → インサートFX → オートメーション → フェーダー／パン）→ バス or マスター。リバーブ／ディレイはセンド量だけがリターンへ送られます。バス／リターンも独立ユニットで、ON/OFF・要約・プリセットがそれぞれ効きます。</p>`;
 }
 function wireMix(){
+  /* ミキサー・プリセット: 組み込み＋ユーザー保存（セッション内） */
+  $$("[data-mixpreset]").forEach(b=>b.addEventListener("click",()=>{ const p=MIX_PRESETS.find(x=>x.id===b.dataset.mixpreset); if(!p) return;
+    p.apply(); if(S.returns&&S.ctx) S.returns.conv.buffer=makeIR(S.ctx,S.returns.decay);
+    applyMixLiveAll(); renderTimeline(); renderInspector(); toast("ミキサープリセット「"+p.label+"」を適用しました"); }));
+  $$("[data-umixpreset]").forEach(b=>b.addEventListener("click",()=>{ const p=(S.userMixPresets||[])[+b.dataset.umixpreset]; if(p){ applyMixSnapshot(JSON.parse(JSON.stringify(p.data))); toast("ミキサープリセット「"+p.label+"」を適用しました"); } }));
+  $$("[data-umixdel]").forEach(b=>b.addEventListener("click",()=>{ const arr=S.userMixPresets||[]; const rm=arr.splice(+b.dataset.umixdel,1)[0]; renderInspector(); if(rm) toast("プリセット「"+rm.label+"」を削除しました"); }));
+  const svm=$("#btnSaveMixPreset");
+  if(svm) svm.onclick=()=>{ const nm=($("#mixPresetName").value||"").trim()||("ミックス "+((S.userMixPresets||[]).length+1));
+    (S.userMixPresets=S.userMixPresets||[]).push({label:nm,data:mixSnapshot()}); renderInspector(); toast("ミキサープリセット「"+nm+"」を保存しました（このセッション内）"); };
   $$(".strip[data-tid]").forEach(st=>{
     const tr=S.tracks.find(t=>t.id===st.dataset.tid); if(!tr) return;
-    st.addEventListener("click",e=>{ if(!e.target.closest("input,button")) selectTrack(tr.id); });
+    st.addEventListener("click",e=>{ if(!e.target.closest("input,button,select")) selectTrack(tr.id); });
     st.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{
       const k=inp.dataset.k, v=parseFloat(inp.value);
-      if(k==="vol"){ tr.vol=v; st.querySelector(".small").textContent=fmtDb(v); if(tr.nodes)tr.nodes.fader.gain.setTargetAtTime(db2lin(v),S.ctx.currentTime,0.03); }
+      if(k==="vol"){ tr.vol=v; const vv=st.querySelector("[data-volval]"); if(vv)vv.textContent=fmtDb(v); if(tr.nodes)tr.nodes.fader.gain.setTargetAtTime(db2lin(v),S.ctx.currentTime,0.03); }
       if(k==="pan"){ tr.pan=v/100; inp.previousElementSibling.querySelector("span").textContent=panLabel(tr.pan); if(tr.nodes)tr.nodes.pan.pan.setTargetAtTime(tr.pan,S.ctx.currentTime,0.03); }
       if(k==="sendRev"){ tr.sendRev=v/100; inp.previousElementSibling.querySelector("span").textContent=v+"%"; if(tr.nodes)tr.nodes.sRev.gain.setTargetAtTime(tr.sendRev,S.ctx.currentTime,0.03); }
       if(k==="sendDly"){ tr.sendDly=v/100; inp.previousElementSibling.querySelector("span").textContent=v+"%"; if(tr.nodes)tr.nodes.sDly.gain.setTargetAtTime(tr.sendDly,S.ctx.currentTime,0.03); }
       renderTimelineSoft();
     }));
-    st.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    const routeSel=st.querySelector("[data-k='route']");
+    if(routeSel) routeSel.addEventListener("change",()=>{ tr.bus=routeSel.value||null; refreshTrackOut(tr); renderTimeline(); renderInspector(); toast("「"+tr.name+"」の送り先を "+(tr.bus?esc((S.buses.find(b=>b.id===tr.bus)||{}).name||"バス"):"マスター")+" に変更しました"); });
+    st.querySelectorAll("[data-jump]").forEach(b=>b.addEventListener("click",()=>{ selectTrack(tr.id); curTab=b.dataset.jump; renderInspector(); }));
+    st.querySelectorAll("button[data-k]").forEach(b=>b.addEventListener("click",()=>{
       if(b.dataset.k==="mute") tr.mute=!tr.mute; if(b.dataset.k==="solo") tr.solo=!tr.solo;
       if(S.playing)startSources(currentPos()); renderTimeline(); renderInspector();
     }));
   });
-  $$("[data-bus]").forEach(inp=>inp.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===inp.dataset.bus);
-    b.vol=parseFloat(inp.value); if(b.nodes)b.nodes.g.gain.setTargetAtTime(db2lin(b.vol),S.ctx.currentTime,0.03); }));
+  $$("[data-bus]").forEach(inp=>inp.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===inp.dataset.bus); if(!b) return;
+    b.vol=parseFloat(inp.value); inp.nextElementSibling.textContent=fmtDb(b.vol); if(b.nodes)b.nodes.g.gain.setTargetAtTime(b.muted?0:db2lin(b.vol),S.ctx.currentTime,0.03); }));
+  $$("[data-buspan]").forEach(inp=>inp.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===inp.dataset.buspan); if(!b) return;
+    b.pan=parseFloat(inp.value)/100; inp.previousElementSibling.querySelector("span").textContent=panLabel(b.pan); if(b.nodes)b.nodes.p.pan.setTargetAtTime(b.pan,S.ctx.currentTime,0.03); }));
+  $$("[data-busmute2]").forEach(btn=>btn.addEventListener("click",()=>{ const b=S.buses.find(x=>x.id===btn.dataset.busmute2); if(!b) return;
+    b.muted=!b.muted; if(b.nodes&&S.ctx)b.nodes.g.gain.setTargetAtTime(b.muted?0:db2lin(b.vol),S.ctx.currentTime,0.03); renderInspector(); }));
+  $$("[data-busdel]").forEach(btn=>btn.addEventListener("click",()=>{ const b=S.buses.find(x=>x.id===btn.dataset.busdel); if(!b) return;
+    S.tracks.forEach(t=>{ if(t.bus===b.id){ t.bus=null; refreshTrackOut(t); } });
+    S.buses=S.buses.filter(x=>x.id!==b.id); renderTimeline(); renderInspector(); toast("バス「"+b.name+"」を削除しました（割り当てトラックはマスターへ戻りました）"); }));
   $$("[data-ret]").forEach(inp=>inp.addEventListener("input",()=>{ if(!S.returns)return; const v=parseFloat(inp.value);
-    if(inp.dataset.ret==="decay"){ S.returns.decay=v; S.returns.conv.buffer=makeIR(S.ctx,v); }
-    if(inp.dataset.ret==="dlyTime"){ S.returns.dlyTime=v; S.returns.dly.delayTime.setTargetAtTime(v,S.ctx.currentTime,0.03); }
-    if(inp.dataset.ret==="dlyFb"){ S.returns.dlyFb=v; S.returns.fb.gain.setTargetAtTime(v,S.ctx.currentTime,0.03); } }));
+    if(inp.dataset.ret==="decay"){ S.returns.decay=v; S.returns.conv.buffer=makeIR(S.ctx,v); inp.previousElementSibling.querySelector("span").textContent=v.toFixed(1)+"秒"; }
+    if(inp.dataset.ret==="dlyTime"){ S.returns.dlyTime=v; S.returns.dly.delayTime.setTargetAtTime(v,S.ctx.currentTime,0.03); inp.previousElementSibling.querySelector("span").textContent=Math.round(v*1000)+"ms"; }
+    if(inp.dataset.ret==="dlyFb"){ S.returns.dlyFb=v; S.returns.fb.gain.setTargetAtTime(v,S.ctx.currentTime,0.03); inp.previousElementSibling.querySelector("span").textContent=Math.round(v*100)+"%"; } }));
+  $$("[data-rettoggle]").forEach(btn=>btn.addEventListener("click",()=>{ ensureCtx();
+    if(btn.dataset.rettoggle==="rev"){ S.revMuted=!S.revMuted; if(S.returns)S.returns.revOut.gain.setTargetAtTime(S.revMuted?0:0.9,S.ctx.currentTime,0.03); }
+    else { S.dlyMuted=!S.dlyMuted; if(S.returns)S.returns.dlyOut.gain.setTargetAtTime(S.dlyMuted?0:0.8,S.ctx.currentTime,0.03); }
+    renderInspector(); }));
+  $$("[data-retpreset]").forEach(btn=>btn.addEventListener("click",()=>{ ensureCtx(); if(!S.returns) return;
+    const [kind,id]=btn.dataset.retpreset.split(":");
+    if(kind==="rev"){ const p=RET_PRESETS.rev.find(x=>x.id===id); if(p){ S.returns.decay=p.decay; S.returns.conv.buffer=makeIR(S.ctx,p.decay); S.revMuted=false; S.returns.revOut.gain.setTargetAtTime(0.9,S.ctx.currentTime,0.03); } }
+    else { const p=RET_PRESETS.dly.find(x=>x.id===id); if(p){ S.returns.dlyTime=p.time; S.returns.dlyFb=p.fb; S.returns.dly.delayTime.setTargetAtTime(p.time,S.ctx.currentTime,0.03); S.returns.fb.gain.setTargetAtTime(p.fb,S.ctx.currentTime,0.03); S.dlyMuted=false; S.returns.dlyOut.gain.setTargetAtTime(0.8,S.ctx.currentTime,0.03); } }
+    renderInspector(); toast("リターン・プリセットを適用しました"); }));
 }
 function syncMixer(){ if(curTab==="mix") renderInspector(); }
 
@@ -1176,13 +1560,27 @@ function manualHTML(){
   </ol>
   <p>すでにトラックがある状態で読み込むと、今のトラックはデモ曲に入れ替わります。読み込み前に確認画面が出るので、自分の音源で作業中の場合は先に「書き出し」タブから書き出してください。</p>
   <div class="row"><button id="btnManualDemo">デモ曲を読み込む</button></div>
-  <h3>ピッチ補正（VariAudio風・単音ボーカル向け）</h3>
+  <h3>ピッチ補正 — 非破壊レイヤー（VariAudio風・単音ボーカル向け）</h3>
   <ol>
-    <li>タイムラインでボーカルのクリップを選び、「ピッチ補正」タブを開きます。</li>
-    <li>「ピッチ解析」を押すと、音程を検出してノート（ブロック）として表示します。</li>
-    <li>ブロックを上下にドラッグすると半音単位で補正できます。「最寄りの音にスナップ」で全ノートを最も近い音程へ寄せることもできます。</li>
-    <li>補正は即座に再生と書き出しへ反映されます。対象は単音の歌声です（和音や重なった音源、タイミングの伸縮は対象外）。</li>
+    <li>タイムラインでボーカルのクリップを選び、「ピッチ補正」タブを開きます。上部に「原音（常に保持）→ ピッチ補正レイヤー」の構成が表示されます。</li>
+    <li>「ピッチ解析」を押すと、音程を検出してノート（ブロック）として表示します。原音は書き換わらず、検出結果はレイヤーにだけ入ります。</li>
+    <li>ブロックを上下にドラッグすると半音単位で補正できます。「最寄りの音にスナップ」で有効なノートを最も近い音程へ寄せることもできます。1音だけ戻したいときは、ノートを選んで「選択ノート ON/OFF」（またはダブルクリック）で無効にしてください。</li>
+    <li>「補正の強さ」で寄せ具合を調整できます。プリセットは ナチュラル60%／スタンダード85%／フル補正100% です。レイヤーをOFFにすれば即座に原音で再生され、レイヤーを削除しても原音は残ります。</li>
+    <li>補正は再生と書き出しへ反映されます。対象は単音の歌声です（和音や重なった音源、タイミングの伸縮は対象外）。</li>
   </ol>
+  <h3>エフェクト — 直列チェーンの段はそれぞれ独立</h3>
+  <ul>
+    <li>「エフェクト」タブのチェーンは、音が上の段から順に流れる直列接続です。各段は独立した単位で、段ごとのON/OFF・並び替え（↑↓ボタン／ドラッグ）・複製・初期値リセットができます。順序を変えると音も変わるので、聞き比べながら試してください。</li>
+    <li>各段にはプリセットがあります（EQ「ボーカル基本」「こもり解消」、コンプ「歌ってみた標準」など）。今の設定に名前を付けて保存することもできます（保存はこのセッションの間だけです）。</li>
+    <li>使っていない段は、段ヘッダーの「たたむ」でパラメータ表示を畳めます。チェーン側には各段の要約（設定の要点）が常に出るので、畳んでも状態は分かります。</li>
+  </ul>
+  <h3>クリップ／ミキサー — それぞれ独立ユニット（第3段）</h3>
+  <ul>
+    <li>「チャンネル / クリップ」タブに、選択中トラックのクリップ一覧が出ます。各クリップは独立した単位で、クリップごとのON/OFF（ミュート）・複製・削除ができ、要約（位置・ゲイン・フェード・ピッチ層の状態）が常に出ます。ミュートしたクリップはタイムラインでも薄く表示され、再生・書き出しから外れます。</li>
+    <li>クリップ編集も非破壊です。原音（ソース）は常に保持され、トリム／ゲイン／フェード／ミュートは「クリップ編集レイヤー」のパラメータとして重なります。ゲイン／フェードにはプリセット（クリック除去、ロングフェード等）があります。使わないときは編集欄を「たたむ」ことができます。</li>
+    <li>「ミキサー」タブでは、各ストリップから送り先バスを直接変えられます。バスとリターン（リバーブ／ディレイ）も独立ユニットで、それぞれON/OFF・パン（バス）・要約・プリセットを持ちます。バスを削除すると、割り当て中のトラックはマスターへ戻ります。</li>
+    <li>ミキサー全体のプリセットもあります（歌ってみた標準／ボーカル前面／ドライ等）。今のミックスに名前を付けて保存することもできます（保存はこのセッションの間だけです）。</li>
+  </ul>
   <h3>基本操作</h3>
   <ul>
     <li>クリップはドラッグで移動、両端ドラッグでトリムできます。分割はクリップを選んで <span class="kbd">S</span>、削除は <span class="kbd">Del</span> です。</li>
@@ -1213,9 +1611,10 @@ async function doExport(){
     master.connect(mcomp); mcomp.connect(oc.destination);
     const R=buildReturns(oc,master,false);
     if(S.returns){ R.conv.buffer=makeIR(oc,S.returns.decay); R.dly.delayTime.value=S.returns.dlyTime; R.fb.gain.value=S.returns.dlyFb; }
+    if(S.revMuted) R.revOut.gain.value=0; if(S.dlyMuted) R.dlyOut.gain.value=0;
     const busNodes={};
     S.buses.forEach(b=>{ const input=oc.createGain(),g=oc.createGain(),p=oc.createStereoPanner();
-      input.connect(g);g.connect(p);p.connect(master); g.gain.value=db2lin(b.vol); p.pan.value=b.pan; busNodes[b.id]=input; });
+      input.connect(g);g.connect(p);p.connect(master); g.gain.value=b.muted?0:db2lin(b.vol); p.pan.value=b.pan||0; busNodes[b.id]=input; });
     const anySolo=S.tracks.some(t=>t.solo);
     S.tracks.forEach(tr=>{
       const input=oc.createGain(); let prev=input;
@@ -1230,7 +1629,7 @@ async function doExport(){
       if(tr.auto.pan.length){ autoP.pan.setValueAtTime(autoVal(tr.auto.pan,0,0),0);
         tr.auto.pan.forEach(p=>autoP.pan.linearRampToValueAtTime(p.v,p.t)); }
       if(tr.mute||(anySolo&&!tr.solo)) return;
-      tr.clips.forEach(cl=>{ const src=oc.createBufferSource(); src.buffer=clipBuffer(cl);
+      tr.clips.forEach(cl=>{ if(cl.muted) return; const src=oc.createBufferSource(); src.buffer=clipBuffer(cl);
         const g=oc.createGain(); src.connect(g); g.connect(input);
         const cg=db2lin(cl.gain||0), t0=cl.start;
         g.gain.setValueAtTime(cl.fadeIn>0?0.0001:cg,t0);
@@ -1277,25 +1676,56 @@ function encodeMp3(buf){
 }
 
 /* ============================================================
-   ピッチ補正（VariAudio風・単音ボーカル向けの最小構成）
+   ピッチ補正 — 非破壊レイヤー（DaVinci Resolve型 / 第1段リファクタ）
    ------------------------------------------------------------
    構造: 検出 PitchDetect / ノート分割 NoteSegment / 適用 PitchShift を
-   独立したモジュール境界に分け、差し替え可能にしてある（将来のML検出や
-   高品質シフトへの交換はこの境界で行う）。UIはクリップの pitch データ
-   だけに依存し、処理本体とは混ぜない。
+   独立したモジュール境界に分け、差し替え可能にしてある。
 
-   clip.pitch = { version:1, notes:[Note,...] }
-   Note = { id, start, end, f0, midi, shift }
+   非破壊の原則:
+   - 原音は clip.buffer（= clip.sourceBuffer）に固定し、一切書き換えない。
+     解析・補正・リセット・レイヤー削除のどれを行っても原音は残る。
+   - 補正は clip.pitchLayer という「パラメータの層」だけに保存する。
+     再生・書き出しは clipBuffer() が原音＋レイヤーから都度導出する。
+     導出結果のキャッシュ（clip._corrCache）は使い捨てで、正本ではない。
+     レイヤーを変えれば再導出され、OFFにすれば即座に原音に戻る。
+
+   clip.pitchLayer = { version:2, enabled, strength, notes:[Note,...] }
+     enabled  : レイヤー全体の ON/OFF（A/B比較はこれで切り替える）
+     strength : 補正の強さ 0..1。実効シフト = shift × strength。
+                1.0=狙った音程まで寄せ切る / 0.6前後=ニュアンスを残す
+     notes    : Note[]
+   Note = { id, start, end, f0, midi, shift, enabled }
      start/end : 元バッファ内の時刻（秒）。トリム・分割しても座標は不変
      f0 / midi : 検出値（midi は小数。例 60.25 = C4 +25セント）
-     shift     : 補正量（半音・小数可）。ドラッグ操作は半音単位で加減し、
-                 スナップは最寄りの整数 midi へ寄せるため小数になり得る
-   ※将来の拡張（セント微調整 / ビブラート / タイミング等）は Note への
-     フィールド追加で足す想定。今は未実装（MVP外）。
-   補正結果は clip.corrBuffer（元と同長の AudioBuffer）にキャッシュし、
-   再生・書き出しは clipBuffer() 経由でそれを使う。
+     shift     : 補正量（半音・小数可）。ドラッグは半音単位、スナップは
+                 最寄りの整数 midi へ寄せるため小数になり得る
+     enabled   : ノート単位の ON/OFF（false のノートは原音のまま）
+   旧形式 clip.pitch / clip.pitchOn / clip.corrBuffer は読み込み時に
+   pitchLayer へ移行する（移行後は pitchLayer が正本）。
    ============================================================ */
-function clipBuffer(cl){ return (cl.pitchOn!==false&&cl.corrBuffer)?cl.corrBuffer:cl.buffer; }
+function ensureSource(cl){ if(cl&&!cl.sourceBuffer) cl.sourceBuffer=cl.buffer; return cl?cl.sourceBuffer:null; }
+function pitchLayer(cl){
+  if(!cl) return null;
+  ensureSource(cl);
+  if(cl.pitchLayer){ const ns=cl.pitchLayer.notes||[]; if(ns.some(n=>n.enabled==null)) cl.pitchLayer.notes=ns.map(n=>({enabled:true,...n})); else cl.pitchLayer.notes=ns; if(cl.pitchLayer.strength==null) cl.pitchLayer.strength=1; if(cl.pitchLayer.enabled==null) cl.pitchLayer.enabled=true; return cl.pitchLayer; }
+  if(cl.pitch&&cl.pitch.notes){ /* 旧形式からの移行 */
+    cl.pitchLayer={version:2,enabled:cl.pitchOn!==false,strength:1,notes:cl.pitch.notes.map(n=>({enabled:true,...n}))};
+    if(cl.corrBuffer) cl._corrCache=cl.corrBuffer;
+    return cl.pitchLayer;
+  }
+  return null;
+}
+function hasPitchLayer(cl){ return !!pitchLayer(cl); }
+function effectiveShift(note,layer){ if(!note||note.enabled===false) return 0; const s=layer?layer.strength:1; return (note.shift||0)*(s==null?1:s); }
+function layerActiveNotes(cl){ const L=pitchLayer(cl); if(!L||!L.enabled) return []; return L.notes.filter(n=>Math.abs(effectiveShift(n,L))>1e-4); }
+function invalidatePitchCache(cl){ if(cl) cl._corrCache=null; }
+function clipBuffer(cl){
+  const L=pitchLayer(cl);
+  if(!L||!L.enabled) return cl.buffer;
+  if(!L.notes.some(n=>Math.abs(effectiveShift(n,L))>1e-4)) return cl.buffer;
+  if(!cl._corrCache){ ensureCtx(); cl._corrCache=PitchShift.render(S.ctx,cl.buffer,L); }
+  return cl._corrCache;
+}
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 function midiName(m){ const r=Math.round(m); return NOTE_NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1); }
 function fmtCents(m){ const c=Math.round((m-Math.round(m))*100); return (c>0?"+":"")+c+"¢"; }
@@ -1349,7 +1779,7 @@ const NoteSegment={
     const med=a=>{ const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
     const notes=[]; let cur=null, dev=null, gap=0;
     const flush=()=>{ if(cur&&cur.midis.length){ const m=med(cur.midis);
-        notes.push({id:nid(),start:cur.start,end:cur.end,f0:440*Math.pow(2,(m-69)/12),midi:m,shift:0}); }
+        notes.push({id:nid(),start:cur.start,end:cur.end,f0:440*Math.pow(2,(m-69)/12),midi:m,shift:0,enabled:true}); }
       cur=null; dev=null; };
     frames.forEach(fr=>{
       if(!fr.voiced){ gap++; if(gap>3){ flush(); gap=0; } return; }
@@ -1374,10 +1804,13 @@ const NoteSegment={
 
 /* ---------- (3) ピッチシフト適用: オフラインで補正バッファを生成 ---------- */
 const PitchShift={
-  /* notes の shift を適用した新しい AudioBuffer（元と同長・同ch数）を返す */
-  render(ctx,buffer,notes){
+  /* レイヤー（または旧形式の notes 配列）から新しい AudioBuffer を導出する。
+     元バッファは読み取り専用で、書き換えない（非破壊）。 */
+  render(ctx,buffer,layerOrNotes){
+    const layer=Array.isArray(layerOrNotes)?{enabled:true,strength:1,notes:layerOrNotes}:layerOrNotes;
+    const notes=(layer&&layer.notes)||[];
     const sr=buffer.sampleRate, out=ctx.createBuffer(buffer.numberOfChannels,buffer.length,sr);
-    const active=notes.filter(n=>Math.abs(n.shift)>1e-4);
+    const active=notes.map(n=>({...n,shift:effectiveShift(n,layer)})).filter(n=>Math.abs(n.shift)>1e-4);
     for(let ch=0;ch<buffer.numberOfChannels;ch++){
       const src=buffer.getChannelData(ch), dst=out.getChannelData(ch);
       dst.set(src);
@@ -1455,66 +1888,97 @@ const PitchShift={
   }
 };
 
-/* ---------- 補正の再レンダリング（UIと処理の橋渡し） ---------- */
+/* ---------- 補正の再導出（UIと処理の橋渡し） ---------- */
 function refreshPitchRender(cl){
-  if(!cl.pitch||cl.pitchOn===false||!cl.pitch.notes.some(n=>Math.abs(n.shift)>1e-4)) cl.corrBuffer=null;
-  else{ ensureCtx(); cl.corrBuffer=PitchShift.render(S.ctx,cl.buffer,cl.pitch.notes); }
+  invalidatePitchCache(cl);
+  /* clipBuffer() が必要時に原音＋レイヤーから再導出する。ここでは再生中の追従だけ行う */
   if(S.playing) startSources(currentPos());
   const st=$("#pitchStatus"); if(st) st.textContent=pitchStatusText(cl);
 }
 function pitchStatusText(cl){
-  if(!cl.pitch) return "未解析です";
-  const c=cl.pitch.notes.filter(n=>Math.abs(n.shift)>1e-4).length;
-  return cl.pitch.notes.length+" ノート検出 / "+c+" ノート補正中"+(cl.pitchOn===false?"（補正OFF）":"");
+  const L=pitchLayer(cl);
+  if(!L) return "未解析です — 原音のみ";
+  const c=L.notes.filter(n=>Math.abs(effectiveShift(n,L))>1e-4).length;
+  const off=L.notes.filter(n=>n.enabled===false).length;
+  return L.notes.length+" ノート検出 / "+c+" ノート補正中"+(off?" / "+off+" ノート無効":"")+(L.enabled?"":"（レイヤーOFF＝原音）")+" ・ 強さ "+Math.round((L.strength==null?1:L.strength)*100)+"%";
 }
+const PITCH_PRESETS=[
+  {id:"natural",label:"ナチュラル 60%",strength:0.6,desc:"ずれの6割だけ寄せる。ビブラートやニュアンスを残したいとき"},
+  {id:"standard",label:"スタンダード 85%",strength:0.85,desc:"歌ってみたの標準。音程は整えつつ機械っぽさを抑える"},
+  {id:"full",label:"フル補正 100%",strength:1,desc:"狙った音程まで寄せ切る。スナップと組み合わせる前提"},
+];
 
-/* ----- ピッチ補正タブ（UIは clip.pitch データだけを見る） ----- */
+/* ----- ピッチ補正タブ（UIは pitchLayer だけを見る） ----- */
 let pitchSelNote=null;
 function pitchHTML(){
   const fc=findClip(S.selClip);
-  if(!fc) return `<div class="pitchwrap"><h3>ピッチ補正（VariAudio風）</h3>
+  if(!fc) return `<div class="pitchwrap"><h3>ピッチ補正 — 非破壊レイヤー</h3>
     <p class="small">タイムラインでクリップを選んでから開いてください。単音のボーカル／ハモリ向けです（和音・重なった音源は対象外）。</p></div>`;
   const {tr,cl}=fc;
+  const L=pitchLayer(cl);
+  const strength=L?(L.strength==null?1:L.strength):1;
   let h=`<div class="pitchwrap"><h3>ピッチ補正 — ${esc(tr.name)} / ${esc(cl.name)}</h3>`;
   if(tr.type==="inst") h+=`<p class="small">このクリップはオケ／楽器トラックです。ピッチ補正は単音ボーカル向けの機能です。</p>`;
+  /* --- レイヤー構成（非破壊） --- */
+  h+=`<div class="layerstack" aria-label="レイヤー構成">
+    <div class="layercard src"><div class="layer-ico">♪</div><div class="layer-main"><b>原音（ソース）</b><span class="badge" style="background:#5b7a2a;margin-left:6px">常に保持</span>
+      <p>${esc(cl.name)} ・ ${(cl.buffer?cl.buffer.duration:0).toFixed(2)} 秒 — 解析や補正で書き換わりません。いつでもここに戻れます。</p></div></div>
+    <div class="layer-arrow">↓ &nbsp;パラメータだけを重ねる</div>
+    <div class="layercard ${L?(L.enabled?"active":"off"):"off"}"><div class="layer-ico">🎚</div><div class="layer-main">
+      <b>ピッチ補正レイヤー</b> ${L?`<span class="badge" style="background:${L.enabled?"#c23e34":"#6e7488"};margin-left:6px">${L.enabled?"ON":"OFF — 原音で再生"}</span>`:`<span class="badge" style="background:#6e7488;margin-left:6px">未作成</span>`}
+      ${L?`<p id="pitchStatus">${pitchStatusText(cl)}</p>
+      <div class="strengthrow"><label for="pitchStrength">補正の強さ</label><input type="range" id="pitchStrength" min="0" max="100" step="1" value="${Math.round(strength*100)}"><output id="pitchStrengthVal">${Math.round(strength*100)}%</output><span class="small">実効シフト ＝ ノートのシフト × 強さ</span></div>
+      <div class="presetchips" role="group" aria-label="ピッチ補正プリセット">${PITCH_PRESETS.map(p=>`<button data-preset="${p.id}" class="${Math.abs(strength-p.strength)<0.01?"on":""}" title="${p.desc}">${p.label}</button>`).join("")}</div>`
+      :`<p>まだ解析していません。「ピッチ解析」でノートを検出すると、このレイヤーが作られます（原音はそのまま）。</p>`}
+    </div>
+    ${L?`<div style="display:flex;flex-direction:column;gap:6px;flex:none"><button id="btnPitchOn">${L.enabled?"レイヤー OFF":"レイヤー ON"}</button><button id="btnDeleteLayer" class="ghost" title="解析結果と補正をすべて削除します。原音は残ります">レイヤーを削除</button></div>`:""}
+    </div></div>`;
   h+=`<div class="pitchbar">
-    <button id="btnAnalyze">${cl.pitch?"再解析":"ピッチ解析"}</button>
-    <span class="pitchinfo" id="pitchStatus">${pitchStatusText(cl)}</span></div>`;
-  if(cl.pitch&&cl.pitch.notes.length){
+    <button id="btnAnalyze">${L?"再解析（レイヤーを作り直す）":"ピッチ解析"}</button>
+    ${L?"":`<span class="pitchinfo" id="pitchStatus">${pitchStatusText(cl)}</span>`}</div>`;
+  if(L&&L.notes.length){
     h+=`<div class="pitchbar">
       <button id="btnSnapNotes">最寄りの音にスナップ</button>
-      <button id="btnPitchReset">補正をリセット</button>
-      <button id="btnPitchOn">${cl.pitchOn===false?"補正をONにする":"補正をOFFにする"}</button>
-      <span class="pitchinfo" id="pitchInfo">ブロックをクリックで選択、上下ドラッグで半音単位に補正できます</span>
+      <button id="btnPitchReset">補正をリセット（シフトを 0 に）</button>
+      <span class="pitchinfo" id="pitchInfo">${pitchNoteInfo(cl)}</span>
       <button id="btnNoteDown" title="選択ノートを半音下げる">− 半音</button>
       <button id="btnNoteUp" title="選択ノートを半音上げる">＋ 半音</button>
+      <button id="btnNoteToggle" title="選択ノートだけを有効／無効にします。無効なノートは原音のままになります">選択ノート ON/OFF</button>
     </div>
     <canvas id="pitchCanvas"></canvas>
-    <p class="small">破線＝検出位置、実ブロック＝補正後の位置。補正は再生と書き出しにそのまま反映されます。解析後にクリップを分割／トリムしても補正は引き継がれます。</p>`;
-  } else if(cl.pitch){
-    h+=`<p class="small">有声音のノートは検出されませんでした。音量が小さい、または単音でない可能性があります。</p>`;
+    <details class="pitch-details"><summary>使い方・非破壊の仕組み（たたむ／開く）</summary>
+      <ul>
+        <li>破線＝検出位置、実ブロック＝補正後の位置（強さを反映）。グレー＝無効ノート／レイヤーOFF時は全体がグレーになります。</li>
+        <li>ブロックをクリックで選択、上下ドラッグで半音単位に補正。「選択ノート ON/OFF」で1音だけ原音に戻せます。</li>
+        <li>補正は原音に焼き込まれません。再生・書き出しのたびに原音＋レイヤーから導出されます。レイヤーをOFFにすれば即座に原音、削除しても原音は残ります。</li>
+        <li>解析後にクリップを分割／トリムしても、レイヤーはバッファ時刻座標のまま引き継がれます。</li>
+      </ul></details>`;
+  } else if(L){
+    h+=`<p class="small">有声音のノートは検出されませんでした。音量が小さい、または単音でない可能性があります。原音はそのまま残っています。</p>`;
   } else {
-    h+=`<p class="small">「ピッチ解析」を押すと、YIN法で音程を検出してノート（ブロック）として表示します。ブロックを上下にドラッグすると半音単位で補正でき、「最寄りの音にスナップ」で全ノートを最も近い音程へ寄せることもできます。補正はオフラインで適用され、再生と書き出しに反映されます。</p>`;
+    h+=`<details class="pitch-details" open><summary>使い方（たたむ／開く）</summary><p>「ピッチ解析」を押すと、YIN法で音程を検出してノート（ブロック）として表示します。ブロックを上下にドラッグすると半音単位で補正でき、「最寄りの音にスナップ」で全ノートを最も近い音程へ寄せることもできます。補正はレイヤーとして重なるだけで、原音は書き換わりません。</p></details>`;
   }
   return h+"</div>";
 }
 function pitchNoteInfo(cl){
-  const nt=cl.pitch&&cl.pitch.notes.find(n=>n.id===pitchSelNote);
+  const L=pitchLayer(cl);
+  const nt=L&&L.notes.find(n=>n.id===pitchSelNote);
   if(!nt) return "ブロックをクリックで選択、上下ドラッグで半音単位に補正できます";
-  const tgt=nt.midi+nt.shift;
-  return "選択中: 検出 "+midiName(nt.midi)+"（"+nt.f0.toFixed(1)+" Hz / "+fmtCents(nt.midi)+"） → 補正後 "+midiName(tgt)+"（"+fmtShift(nt.shift)+"）";
+  const eff=effectiveShift(nt,L), tgt=nt.midi+eff;
+  return "選択中: 検出 "+midiName(nt.midi)+"（"+nt.f0.toFixed(1)+" Hz / "+fmtCents(nt.midi)+"） → 補正後 "+midiName(tgt)+"（"+fmtShift(eff)+(nt.enabled===false?" / 無効＝原音":"")+"）";
 }
 function updatePitchInfo(cl){ const el=$("#pitchInfo"); if(el) el.textContent=pitchNoteInfo(cl); }
 function drawPitch(cv,cl){
-  if(!cl.pitch||!cl.pitch.notes.length) return;
+  const _L=pitchLayer(cl);
+  if(!_L||!_L.notes.length) return;
   const dpr=Math.min(2,window.devicePixelRatio||1);
   const w=cv.clientWidth, hgt=cv.clientHeight; if(!w) return;
   cv.width=w*dpr; cv.height=hgt*dpr;
   const c=cv.getContext("2d"); c.scale(dpr,dpr);
   const cs=getComputedStyle(document.documentElement);
-  const notes=cl.pitch.notes;
+  const notes=_L.notes;
   let mn=Infinity, mx=-Infinity;
-  notes.forEach(n=>{ mn=Math.min(mn,n.midi+Math.min(0,n.shift)); mx=Math.max(mx,n.midi+Math.max(0,n.shift)); });
+  notes.forEach(n=>{ const e=effectiveShift(n,_L); mn=Math.min(mn,n.midi+Math.min(0,e)); mx=Math.max(mx,n.midi+Math.max(0,e)); });
   mn=Math.floor(mn)-1; mx=Math.ceil(mx)+1;
   const gut=40, rows=mx-mn+1, rh=(hgt-10)/rows;
   const t0=cl.offset, t1=cl.offset+cl.dur;
@@ -1532,56 +1996,71 @@ function drawPitch(cv,cl){
   const rr=(x,y,ww,hh,r)=>{ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+ww,y,x+ww,y+hh,r); c.arcTo(x+ww,y+hh,x,y+hh,r); c.arcTo(x,y+hh,x,y,r); c.arcTo(x,y,x+ww,y,r); c.closePath(); };
   notes.forEach(n=>{
     const bx=X(n.start), bw=Math.max(6,X(n.end)-bx), bh=Math.max(6,rh*0.72);
-    /* 検出位置（破線） */
     c.setLineDash([4,3]); c.strokeStyle="rgba(255,255,255,.55)"; c.lineWidth=1;
     c.strokeRect(bx,Y(n.midi)-bh/2,bw,bh); c.setLineDash([]);
-    /* 補正後ブロック */
-    const by=Y(n.midi+n.shift)-bh/2, shifted=Math.abs(n.shift)>1e-4, sel=n.id===pitchSelNote;
-    c.fillStyle=cl.pitchOn===false?"rgba(140,148,168,.5)":(shifted?"rgba(240,130,60,.88)":"rgba(76,141,226,.75)");
+    const eff=effectiveShift(n,_L);
+    const by=Y(n.midi+eff)-bh/2, shifted=Math.abs(eff)>1e-4, sel=n.id===pitchSelNote, disabled=n.enabled===false||!_L.enabled;
+    c.fillStyle=disabled?"rgba(140,148,168,.5)":(shifted?"rgba(240,130,60,.88)":"rgba(76,141,226,.75)");
     rr(bx,by,bw,bh,4); c.fill();
     if(sel){ c.strokeStyle="#fff"; c.lineWidth=2; rr(bx,by,bw,bh,4); c.stroke(); }
     if(bw>44){ c.fillStyle="#fff"; c.font="bold 10px sans-serif";
-      c.fillText(midiName(n.midi+n.shift)+(shifted?" "+fmtShift(n.shift):""),bx+5,Y(n.midi+n.shift)); c.font="9px sans-serif"; }
+      c.fillText(midiName(n.midi+eff)+(shifted?" "+fmtShift(eff):"")+(n.enabled===false?" OFF":""),bx+5,Y(n.midi+eff)); c.font="9px sans-serif"; }
   });
 }
 function wirePitch(){
   const fc=findClip(S.selClip); if(!fc) return;
   const {cl}=fc;
+  const L=pitchLayer(cl);
   const cv=$("#pitchCanvas");
   if(cv) requestAnimationFrame(()=>drawPitch(cv,cl));
   const an=$("#btnAnalyze");
   if(an) an.onclick=async()=>{
     ensureCtx(); an.disabled=true;
-    const st=$("#pitchStatus"); if(st) st.textContent="解析中… 0%";
+    const prevStrength=L?(L.strength==null?1:L.strength):1;
     try{
-      const frames=await PitchDetect.analyze(cl.buffer,p=>{ if(st) st.textContent="解析中… "+Math.round(p*100)+"%"; });
-      cl.pitch={version:1,notes:NoteSegment.segment(frames)};
-      cl.pitchOn=true; cl.corrBuffer=null; pitchSelNote=null;
-      toast("ピッチ解析が完了しました（"+cl.pitch.notes.length+" ノート）");
+      const frames=await PitchDetect.analyze(cl.buffer,p=>{ const st=$("#pitchStatus"); if(st) st.textContent="解析中… "+Math.round(p*100)+"%"; });
+      cl.pitchLayer={version:2,enabled:true,strength:prevStrength,notes:NoteSegment.segment(frames)};
+      delete cl.pitch; delete cl.pitchOn; delete cl.corrBuffer; invalidatePitchCache(cl); pitchSelNote=null;
+      toast("ピッチ解析が完了しました（"+cl.pitchLayer.notes.length+" ノート）— 原音はそのまま、補正はレイヤーです");
     }catch(err){ toast("ピッチ解析に失敗しました: "+err.message); }
+    renderTimeline();
     if(curTab==="pitch") renderInspector();
   };
+  /* 強さスライダー */
+  const str=$("#pitchStrength");
+  if(str&&L) str.addEventListener("change",()=>renderTimeline());
+  if(str&&L) str.addEventListener("input",()=>{ L.strength=parseInt(str.value)/100; const o=$("#pitchStrengthVal"); if(o)o.textContent=str.value+"%";
+    $$(".presetchips button").forEach(b=>{ const p=PITCH_PRESETS.find(x=>x.id===b.dataset.preset); b.classList.toggle("on",!!p&&Math.abs(L.strength-p.strength)<0.01); });
+    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); const st=$("#pitchStatus"); if(st)st.textContent=pitchStatusText(cl); });
+  /* プリセット */
+  $$("[data-preset]").forEach(b=>b.addEventListener("click",()=>{ if(!L)return; const p=PITCH_PRESETS.find(x=>x.id===b.dataset.preset); if(!p)return;
+    L.strength=p.strength; refreshPitchRender(cl); renderInspector(); toast("プリセット「"+p.label+"」を適用しました — "+p.desc); }));
   const snap=$("#btnSnapNotes");
-  if(snap) snap.onclick=()=>{ cl.pitch.notes.forEach(n=>{ n.shift=Math.round((Math.round(n.midi)-n.midi)*1000)/1000; });
-    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("全ノートを最寄りの音程へ寄せました"); };
+  if(snap&&L) snap.onclick=()=>{ L.notes.forEach(n=>{ if(n.enabled!==false) n.shift=Math.round((Math.round(n.midi)-n.midi)*1000)/1000; });
+    refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("有効なノートを最寄りの音程へ寄せました（レイヤーのみ変更、原音は不変）"); };
   const rst=$("#btnPitchReset");
-  if(rst) rst.onclick=()=>{ cl.pitch.notes.forEach(n=>n.shift=0);
-    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("ピッチ補正をリセットしました"); };
+  if(rst&&L) rst.onclick=()=>{ L.notes.forEach(n=>n.shift=0);
+    refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("補正をリセットしました（原音はそのままです）"); };
   const onb=$("#btnPitchOn");
-  if(onb) onb.onclick=()=>{ cl.pitchOn=cl.pitchOn===false?true:false; refreshPitchRender(cl); renderInspector(); };
-  const stepBtn=(id,d)=>{ const b=$(id); if(b) b.onclick=()=>{ const nt=cl.pitch&&cl.pitch.notes.find(n=>n.id===pitchSelNote);
+  if(onb&&L) onb.onclick=()=>{ L.enabled=!L.enabled; refreshPitchRender(cl); renderTimeline(); renderInspector(); toast(L.enabled?"ピッチ補正レイヤーを ON にしました":"レイヤーを OFF にしました — 原音で再生されます"); };
+  const delL=$("#btnDeleteLayer");
+  if(delL&&L) delL.onclick=()=>{ cl.pitchLayer=null; delete cl.pitch; delete cl.pitchOn; invalidatePitchCache(cl); pitchSelNote=null; refreshPitchRender(cl); renderTimeline(); renderInspector(); toast("ピッチ補正レイヤーを削除しました（原音は残っています）"); };
+  const stepBtn=(id,d)=>{ const b=$(id); if(b) b.onclick=()=>{ const nt=L&&L.notes.find(n=>n.id===pitchSelNote);
     if(!nt){ toast("先にノートを選んでください"); return; }
-    nt.shift=clamp(Math.round((nt.shift+d)*100)/100,-12,12);
-    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); }; };
+    nt.enabled=true; nt.shift=clamp(Math.round((nt.shift+d)*100)/100,-12,12);
+    refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); }; };
   stepBtn("#btnNoteDown",-1); stepBtn("#btnNoteUp",1);
-  if(!cv||!cl.pitch) return;
+  const tog=$("#btnNoteToggle");
+  if(tog&&L) tog.onclick=()=>{ const nt=L.notes.find(n=>n.id===pitchSelNote); if(!nt){ toast("先にノートを選んでください"); return; }
+    nt.enabled=nt.enabled===false?true:false; refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast(nt.enabled?"ノートを有効にしました":"ノートを無効にしました — その音は原音のままになります"); };
+  if(!cv||!L) return;
   let drag=null;
   cv.addEventListener("pointerdown",e=>{
     const g=cv._geom; if(!g) return;
     const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
-    const hit=[...cl.pitch.notes].reverse().find(n=>{
+    const hit=[...L.notes].reverse().find(n=>{
       const bx=g.X(n.start), bw=Math.max(6,g.X(n.end)-bx);
-      return x>=bx&&x<=bx+bw&&Math.abs(y-g.Y(n.midi+n.shift))<=Math.max(11,g.rh*0.5);
+      return x>=bx&&x<=bx+bw&&Math.abs(y-g.Y(n.midi+effectiveShift(n,L)))<=Math.max(11,g.rh*0.5);
     });
     pitchSelNote=hit?hit.id:null;
     if(hit){ drag={id:hit.id,y0:y,shift0:hit.shift,moved:false}; cv.setPointerCapture(e.pointerId); }
@@ -1590,11 +2069,16 @@ function wirePitch(){
   cv.addEventListener("pointermove",e=>{
     if(!drag||!cv._geom) return;
     const r=cv.getBoundingClientRect(), y=e.clientY-r.top;
-    const nt=cl.pitch.notes.find(n=>n.id===drag.id); if(!nt) return;
+    const nt=L.notes.find(n=>n.id===drag.id); if(!nt) return;
     const ns=clamp(drag.shift0+Math.round((drag.y0-y)/cv._geom.rh),-12,12);
-    if(ns!==nt.shift){ nt.shift=ns; drag.moved=true; drawPitch(cv,cl); updatePitchInfo(cl); }
+    if(ns!==nt.shift){ nt.shift=ns; nt.enabled=true; drag.moved=true; drawPitch(cv,cl); updatePitchInfo(cl); }
   });
-  cv.addEventListener("pointerup",()=>{ if(drag&&drag.moved){ refreshPitchRender(cl); updatePitchInfo(cl); } drag=null; });
+  cv.addEventListener("pointerup",()=>{ if(drag&&drag.moved){ refreshPitchRender(cl); renderTimeline(); updatePitchInfo(cl); } drag=null; });
+  cv.addEventListener("dblclick",e=>{
+    const g=cv._geom; if(!g) return; const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    const hit=[...L.notes].reverse().find(n=>{ const bx=g.X(n.start), bw=Math.max(6,g.X(n.end)-bx); return x>=bx&&x<=bx+bw&&Math.abs(y-g.Y(n.midi+effectiveShift(n,L)))<=Math.max(11,g.rh*0.5); });
+    if(hit){ hit.enabled=hit.enabled===false?true:false; refreshPitchRender(cl); renderTimeline(); drawPitch(cv,cl); updatePitchInfo(cl); }
+  });
 }
 
 /* ----- split / delete ----- */
@@ -1602,10 +2086,13 @@ function splitSelected(){
   const fc=findClip(S.selClip); if(!fc){ toast("分割するクリップを選んでください"); return; }
   const {tr,cl}=fc, t=S.playing?currentPos():S.pos;
   if(t<=cl.start+0.02||t>=cl.start+cl.dur-0.02){ toast("再生ヘッドがクリップの内側にある位置で分割してください"); return; }
-  const right={id:nid(),name:cl.name,buffer:cl.buffer,start:t,offset:cl.offset+(t-cl.start),dur:cl.start+cl.dur-t,
-    gain:cl.gain,fadeIn:0,fadeOut:cl.fadeOut};
-  /* ピッチ補正はバッファ時刻座標なので、分割してもそのまま引き継げる */
-  if(cl.pitch){ right.pitch=JSON.parse(JSON.stringify(cl.pitch)); right.pitchOn=cl.pitchOn; right.corrBuffer=cl.corrBuffer; }
+  const right={id:nid(),name:cl.name,buffer:cl.buffer,sourceBuffer:cl.sourceBuffer||cl.buffer,start:t,offset:cl.offset+(t-cl.start),dur:cl.start+cl.dur-t,
+    gain:cl.gain,fadeIn:0,fadeOut:cl.fadeOut,muted:!!cl.muted};
+  /* ピッチ補正レイヤーはバッファ時刻座標なので、分割してもそのまま引き継げる。
+     原音バッファは共有（コピーしない＝非破壊）、レイヤーは値コピーして独立させる。
+     導出キャッシュは共有せず、各クリップが自分の範囲で再導出する。 */
+  const _L=pitchLayer(cl);
+  if(_L){ right.pitchLayer=JSON.parse(JSON.stringify(_L)); right._corrCache=null; cl._corrCache=null; }
   cl.dur=t-cl.start; cl.fadeOut=0;
   tr.clips.splice(tr.clips.indexOf(cl)+1,0,right); S.selClip=right.id;
   renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos());
@@ -1622,6 +2109,9 @@ function deleteSelected(){
    ============================================================ */
 $("#btnPlay").onclick=()=>play();
 $("#btnStop").onclick=()=>stopAll();
+$("#btnBarPlay").onclick=()=>play();
+$("#btnBarStop").onclick=()=>stopAll();
+$("#btnBarReturn").onclick=()=>seek(0);
 $("#btnLoop").onclick=e=>{ S.loop.on=!S.loop.on; e.currentTarget.classList.toggle("on",S.loop.on);
   if(S.loop.on&&(S.loop.end<=S.loop.start)){ S.loop.start=0; S.loop.end=Math.min(8,projectEnd()); }
   drawRuler(); };
@@ -1673,6 +2163,9 @@ function updatePlayhead(){
   const bt=pos/beatSec(); const bar=Math.floor(bt/4)+1, beat=Math.floor(bt%4)+1;
   $("#timeBar").textContent=bar+"小節 "+beat+"拍";
   $("#timeLen").textContent=fmtT(projectEnd());
+  const bb=$("#barTimeBig"); if(bb) bb.textContent=fmtT(pos);
+  const bbar=$("#barTimeBar"); if(bbar) bbar.textContent=bar+"小節 "+beat+"拍";
+  const blen=$("#barTimeLen"); if(blen) blen.textContent=fmtT(projectEnd());
 }
 function raf(){
   requestAnimationFrame(raf);
