@@ -7,7 +7,7 @@ A browser-based vocal mixing studio for "utaite" cover songs. This repository is
 - Live site: https://consulenteidealistas.github.io/VocalMIX/
 - `index.html` — the main app (timeline, channel, effects, pitch correction, mixer)
 - `manual.html` — the user manual (static page)
-- `export.html` — the export page. Choosing Export in the main app hands the current project over to this page through IndexedDB, so rendering happens here without interrupting playback work on the main page.
+- `export.html` — a dedicated export-only page. Choosing Export in the main app hands the current project over to this page through IndexedDB; the page shows only the export controls (format, sample rate, bit depth, file name) with the project summary and a back link, so rendering happens here without interrupting playback work on the main page.
 
 The app starts with an empty timeline. Drag & drop your own audio files (karaoke backing + vocal takes) onto the page, or use "Load Demo Song" to load a built-in synthesized demo (backing + vocal + harmony).
 

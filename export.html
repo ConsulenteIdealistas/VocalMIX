@@ -2508,12 +2508,21 @@ function raf(){
 })();
 </script>
 <style>
-  .handoffbar{max-width:880px;margin:14px auto 0;padding:10px 16px;border:1px solid var(--line,#4a3540);border-radius:8px;background:rgba(0,0,0,.35);color:var(--tx,#ece2cd);font-family:Jost,sans-serif;letter-spacing:.03em;font-size:14px}
-  .handoffbar a{color:var(--acc,#a8894e)}
+  .exporthead{max-width:880px;margin:26px auto 0;padding:0 20px}
+  .exporthead .wm{font-family:Cretino,serif;font-size:30px;color:var(--tx,#ece2cd);letter-spacing:.04em}
+  .exporthead h1{font-family:var(--serif);font-weight:600;font-size:26px;margin:8px 0 2px;color:var(--tx,#ece2cd)}
+  .exporthead .stat{color:var(--tx3,#b8a88f);font-family:Jost,'Zen Kaku Gothic New',sans-serif;font-size:14px;letter-spacing:.03em;min-height:1.2em}
+  .exporthead .row{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+  .backlink{color:var(--acc,#a8894e);text-decoration:none;font-family:Jost,'Zen Kaku Gothic New',sans-serif;letter-spacing:.05em}
+  body.exportonly .insp{max-width:880px;margin:18px auto 56px;padding:0 20px}
 </style>
 <script>
-/* VocalMIX export page: restore the project handed over from index.html. */
+/* VocalMIX export page: a dedicated, export-only page.
+   Restores the project handed over from index.html (IndexedDB), then
+   removes every non-export part of the app shell so the page does one
+   thing: render the mix to a file. */
 (function(){
+  function ja(){ return (window.VM_LANG || localStorage.getItem("vocalmix-lang") || "en") === "ja"; }
   function loadHandoff(){
     return new Promise(function(res, rej){
       var rq=indexedDB.open("vocalmix-handoff", 1);
@@ -2539,18 +2548,59 @@ function raf(){
     }
     return v;
   }
-  function banner(html){
-    var d=document.createElement("div");
-    d.className="handoffbar"; d.innerHTML=html;
-    document.body.prepend(d);
+  var headEl=null, statEl=null, statText="", restored=false;
+  function showNoState(){
+    var tb=document.querySelector("#tabBody");
+    if(tb) tb.innerHTML = '<div class="sect"><h3>' + (ja() ? "引き継がれたプロジェクトがありません" : "No project was handed over") + '</h3>' +
+      '<p class="small">' + (ja()
+        ? "本体ページでプロジェクトを用意し、「書き出し」からこのページへ進んでください。"
+        : "Prepare a project on the main page and come here via its Export button.") + '</p></div>';
+  }
+  function buildHeader(){
+    headEl=document.createElement("div");
+    headEl.className="exporthead";
+    document.body.prepend(headEl);
+    refreshHeader();
+  }
+  function refreshHeader(){
+    if(!headEl) return;
+    var j=ja();
+    document.title = j ? "VocalMIX — 書き出し" : "VocalMIX — Export";
+    headEl.innerHTML =
+      '<div class="wm">VocalMIX</div>' +
+      '<h1>' + (j ? "書き出し" : "Export") + '</h1>' +
+      '<div class="stat"></div>' +
+      '<div class="row"><a class="backlink" href="index.html">' + (j ? "← アプリに戻る" : "&larr; Back to the app") + '</a>' +
+      '<div class="seg langseg"><button data-lang="en">EN</button><button data-lang="ja">日本語</button></div></div>';
+    statEl=headEl.querySelector(".stat");
+    statEl.textContent = statText;
+    headEl.querySelectorAll(".langseg button").forEach(function(b){
+      b.classList.toggle("on", (window.VM_LANG || "en") === b.dataset.lang);
+      b.onclick=function(){
+        if(window.VM_setLang) window.VM_setLang(b.dataset.lang);
+        refreshHeader();
+        if(restored) renderInspector(); else showNoState();
+      };
+    });
+  }
+  function lockdown(){
+    [".transport", ".toolbar", ".tlwrap", ".bottombar", "#tabs"].forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){ el.remove(); });
+    });
+    document.body.classList.add("exportonly");
   }
   async function boot(){
     var p=null;
     try{ p=await loadHandoff(); }catch(e){}
+    buildHeader();
     if(!p){
-      banner("No project was handed over from the main page. <a href=\"index.html\">Back to the main page</a> &mdash; or import audio here and export from this page directly.");
+      lockdown();
+      showNoState();
+      statText = ja() ? "本体ページの「書き出し」からこのページへ進んでください" : "Open this page from the main page's Export button.";
+      refreshHeader();
       return;
     }
+    restored=true;
     var mv=document.querySelector("#masterVol"); if(mv && p.masterVol!=null) mv.value=p.masterVol;
     var bi=document.querySelector("#bpmIn"); if(bi) bi.value=p.bpm;
     var zr=document.querySelector("#zoomR"); if(zr) zr.value=p.px;
@@ -2584,13 +2634,13 @@ function raf(){
     curTab="exp";
     renderTimeline();
     renderInspector();
-    banner("Project restored from the main page. <a href=\"index.html\">Back to the main page</a>");
+    lockdown();
+    renderInspector();
+    statText = ja()
+      ? "本体ページからプロジェクトを引き継ぎました — " + S.tracks.length + " トラック · 長さ " + fmtT(projectEnd())
+      : "Project restored from the main page — " + S.tracks.length + " tracks · length " + fmtT(projectEnd());
+    refreshHeader();
   }
-  var tabs=document.querySelector("#tabs");
-  if(tabs) tabs.addEventListener("click", function(e){
-    var b=e.target.closest("button"); if(!b) return;
-    if(b.dataset.t==="manual"){ e.preventDefault(); e.stopPropagation(); location.href="manual.html"; }
-  }, true);
   boot();
 })();
 </script>
