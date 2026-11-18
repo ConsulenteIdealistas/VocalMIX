@@ -1,23 +1,29 @@
 # VocalMIX
 
-歌ってみた用のボーカルMIXスタジオ。ブラウザで動くWebアプリです。
+A browser-based vocal mixing studio for "utaite" cover songs. This repository is the canonical source of VocalMIX; the app is published via GitHub Pages.
 
-## 開き方
+## Pages
 
-- GitHub Pages: https://consulenteidealistas.github.io/VocalMIX/
-- ページ構成: 本体 `index.html` / 取扱説明書 `manual.html` / 書き出し `export.html`（本体の「書き出しページへ」から、プロジェクトを引き継いで遷移します）
+- Live site: https://consulenteidealistas.github.io/VocalMIX/
+- `index.html` — the main app (timeline, channel, effects, pitch correction, mixer)
+- `manual.html` — the user manual (static page)
+- `export.html` — the export page. Choosing Export in the main app hands the current project over to this page through IndexedDB, so rendering happens here without interrupting playback work on the main page.
 
-開くと空のタイムラインで始まります。自分の音源はドラッグ＆ドロップで読み込めます。試したいときは「デモ曲を読み込む」ボタンで、シンセ生成のデモ曲（オケ＋ボーカル＋ハモリの3トラック）を手動で読み込めます。使い方は取扱説明書ページ（manual.html）にまとめています。
+The app starts with an empty timeline. Drag & drop your own audio files (karaoke backing + vocal takes) onto the page, or use "Load Demo Song" to load a built-in synthesized demo (backing + vocal + harmony).
 
-## 機能
+## Features
 
-- マルチトラック再生（ループ・シーク・BPM・スナップ）
-- 画面下部に固定のトランスポートバー（先頭へ／再生・停止／現在位置表示）。ページをスクロールしても操作できます
-- 波形クリップの移動／トリム／分割／フェードでタイミング調整。クリップごとにミュート・複製・ゲイン／フェードのプリセットも可能
-- ピッチ補正（VariAudio風・MVP）: YIN法で音程を検出し、ノートブロックをピアノロール表示。ブロックをドラッグ（半音単位）して補正し、再生と書き出しに反映。最寄りの音へのスナップ付き。原音を書き換えない非破壊レイヤー方式で、レイヤーのON/OFF（A/B比較）・補正の強さ・プリセット・ノート単位のON/OFFに対応。単音ボーカル専用で、和音分離・フォルマント編集・ビブラート個別編集・タイミング伸縮は含みません
-- 5バンド・パラメトリックEQ（ドラッグ編集＋数値入力）
-- フルコントロールのコンプレッサー（GRメーター付き）
-- リバーブ／ディレイ（インサート＆センド／リターン）、バスルーティング
-- エフェクトは段ごとにON/OFF・並び替え・複製・リセット・折りたたみができ、段別のプリセット（組み込み＋名前付き保存）に対応。ミキサー全体のプリセットもあります（名前付き保存はセッション内のみ）
-- ボリューム／パンのオートメーション曲線描画
-- 書き出し: WAV／MP3（48kHz・24bit対応）
+- Multitrack playback with loop, seek, BPM and snap; a fixed transport bar stays at the bottom of the screen while the page scrolls
+- Waveform clips: move, trim, split, fades; per-clip mute, duplicate, and gain/fade presets
+- Pitch correction (VariAudio-style): YIN pitch detection, piano-roll note blocks, semitone drag with snap-to-note. Fully non-destructive — corrections live in a layer over the untouched original audio, with layer on/off (A/B), strength, presets, and per-note on/off. Monophonic vocals only; no chord separation, formant editing, per-note vibrato editing, or time stretching
+- 5-band parametric EQ (drag editing + numeric input)
+- Full-control compressor with gain-reduction meter
+- Reverb / delay as inserts and sends/returns, bus routing
+- Every FX stage is a unit: on/off, reorder, duplicate, reset, collapse, per-stage presets (built-in + named user presets, session-only). Mixer-wide presets as well (named saves are session-only)
+- Volume / pan automation curves
+- Export: WAV / MP3 (up to 48 kHz, 24-bit)
+
+## Maintenance notes
+
+- `index.html` and `export.html` contain the same app code and differ only in their boot scripts (`src/boot-index.html` / `src/boot-export.html` in the working copy). Apply functional changes to both. `manual.html` renders the manual text built into the app (`manualHTML()`); its boot script is `src/boot-manual.html`.
+- Fonts are embedded as subset WOFF2 data URIs (Latin subsets): Cormorant Garamond (headings, labels, manual — SIL OFL), Jost (controls — SIL OFL), Cretino (wordmark — public domain, Typodermic). The background texture is an embedded photo of ebony wood.
