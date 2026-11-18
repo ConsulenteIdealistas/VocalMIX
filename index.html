@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>歌ってみたMIX</title>
+    <style>
+      button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
+    </style>
+    <style>
+      :root{
+        --bg:#17181c; --bg2:#1e2026; --bg3:#262932; --panel:#20232b; --panel2:#2a2e38;
+        --line:#3a3f4d; --line2:#2c303c;
+        --tx:#e8eaf0; --tx2:#a7adbd; --tx3:#6e7488;
+        --acc:#e2574c; --acc2:#f0823c; --teal:#2fbfa5; --blue:#4c8de2; --gold:#e3b341;
+        --lane:#1b1d23; --lane-alt:#1e2027; --grid:#2b2f3a; --gridbar:#3d4254;
+        --clip-inst:#3f6212; --ruler:#23252e;
+        --shadow:0 8px 28px rgba(0,0,0,.45);
+        --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+      }
+      @media (prefers-color-scheme: light){
+        :root{
+          --bg:#d8d9de; --bg2:#e4e5ea; --bg3:#eceef2; --panel:#e9ebef; --panel2:#dfe1e8;
+          --line:#b9bcc7; --line2:#c6c9d3;
+          --tx:#1d1f26; --tx2:#4c5163; --tx3:#83879a;
+          --lane:#cfd1d9; --lane-alt:#d5d7de; --grid:#b4b7c2; --gridbar:#9ea2b1;
+          --ruler:#c2c4cd; --shadow:0 8px 28px rgba(30,30,50,.25);
+        }
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{margin:0;background:var(--bg);color:var(--tx);
+        font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,-apple-system,"Segoe UI",sans-serif;
+        font-size:13px; overflow:hidden;}
+      button{font:inherit;color:var(--tx);background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+        padding:4px 10px;cursor:pointer;min-height:32px}
+      button:hover{border-color:var(--tx3)}
+      button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+      button.ghost{background:transparent}
+      button:disabled{opacity:.45;cursor:default}
+      select,input[type=text],input[type=number]{font:inherit;color:var(--tx);background:var(--bg2);
+        border:1px solid var(--line);border-radius:6px;padding:4px 8px;min-height:32px}
+      input[type=number]{width:76px;font-family:var(--mono)}
+      input[type=range]{accent-color:var(--acc);min-height:24px}
+      label{color:var(--tx2)}
+      .app{display:flex;flex-direction:column;height:100dvh}
+
+      /* ---------- transport ---------- */
+      .transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+        padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--line)}
+      .transport .grp{display:flex;align-items:center;gap:6px}
+      .tbtn{width:44px;height:40px;font-size:16px;display:grid;place-items:center;border-radius:8px}
+      .tbtn.play{background:var(--acc);border-color:var(--acc);color:#fff;width:52px}
+      .tbtn.play.playing{background:var(--teal);border-color:var(--teal)}
+      .timebox{font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;
+        padding:5px 12px;min-width:196px;text-align:center}
+      .timebox .big{font-size:19px;letter-spacing:.04em}
+      .timebox .sub{font-size:11px;color:var(--tx2)}
+      .meterwrap{display:flex;align-items:flex-end;gap:3px;height:34px}
+      .meter{width:9px;height:34px;background:var(--bg);border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
+      .meter i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--teal) 55%,var(--gold) 78%,var(--acc) 95%);display:block}
+      .spacer{flex:1}
+      .small{font-size:11px;color:var(--tx2)}
+      .kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--tx2)}
+
+      /* ---------- toolbar ---------- */
+      .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--line2)}
+      .toolbar .sep{width:1px;height:24px;background:var(--line)}
+      .seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+      .seg button{border:0;border-radius:0;background:transparent}
+      .seg button.on{background:var(--blue);color:#fff}
+
+      /* ---------- timeline ---------- */
+      .tlwrap{flex:1;min-height:180px;overflow:auto;position:relative;background:var(--lane)}
+      .tlgrid{display:grid;grid-template-columns:208px 1fr;min-height:100%}
+      .heads{position:sticky;left:0;z-index:6;background:var(--bg2)}
+      .head-spacer{height:30px;border-bottom:1px solid var(--line);background:var(--ruler);position:sticky;top:0;z-index:7;
+        display:flex;align-items:center;padding:0 10px;color:var(--tx2);font-size:11px;gap:6px}
+      .thead{height:96px;border-bottom:1px solid var(--line2);padding:8px 10px;display:flex;flex-direction:column;gap:5px;cursor:pointer}
+      .thead.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--acc)}
+      .thead .nm{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden}
+      .dot{width:11px;height:11px;border-radius:3px;flex:none}
+      .badge{font-size:10px;color:#fff;border-radius:4px;padding:1px 6px;font-weight:600}
+      .thead .row{display:flex;align-items:center;gap:6px}
+      .msbtn{width:30px;min-height:26px;height:26px;padding:0;font-size:11px;font-weight:700;border-radius:5px;flex:none}
+      .msbtn.m.on{background:var(--gold);border-color:var(--gold);color:#231a00}
+      .msbtn.s.on{background:var(--teal);border-color:var(--teal);color:#04231d}
+      .thead input[type=range]{flex:1;min-width:0}
+      .thead .del{margin-left:auto;width:28px;min-height:26px;height:26px;padding:0;color:var(--tx3);flex:none}
+      .lanes{position:relative}
+      .ruler{position:sticky;top:0;z-index:5;display:block;background:var(--ruler);border-bottom:1px solid var(--line);cursor:text}
+      .lane{height:96px;border-bottom:1px solid var(--line2);position:relative}
+      .lane.sel{background:rgba(127,140,180,.06)}
+      .lane.drop{outline:2px dashed var(--blue);outline-offset:-2px}
+      .clip{position:absolute;top:8px;height:80px;border-radius:7px;overflow:hidden;cursor:grab;
+        border:1px solid rgba(0,0,0,.35);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+      .clip.sel{outline:2px solid #fff;outline-offset:0;z-index:3}
+      .clip canvas{display:block;width:100%;height:100%}
+      .clip .cap{position:absolute;top:0;left:0;right:0;padding:2px 7px;font-size:10.5px;color:#fff;
+        background:rgba(0,0,0,.34);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+      .clip .edge{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:2}
+      .clip .edge.l{left:0}.clip .edge.r{right:0}
+      .playhead{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--acc);z-index:4;pointer-events:none}
+      .playhead::before{content:"";position:absolute;top:0;left:-7px;border:6px solid transparent;border-top:8px solid var(--acc)}
+      .autocanvas{position:absolute;inset:0;z-index:3;cursor:crosshair}
+      .empty-note{position:absolute;inset:44px 24px auto 232px;max-width:560px;background:var(--panel);
+        border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);z-index:8}
+      .empty-note h2{margin:0 0 8px;font-size:16px}
+      .empty-note p{margin:6px 0;color:var(--tx2);line-height:1.65}
+      .empty-note .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+      /* ---------- inspector ---------- */
+      .insp{height:308px;flex:none;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column}
+      .tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+      .tabs button{border:0;background:transparent;border-radius:8px 8px 0 0;padding:7px 14px;color:var(--tx2);min-height:36px}
+      .tabs button.on{background:var(--bg2);color:var(--tx);font-weight:600;box-shadow:inset 0 -2px 0 var(--acc)}
+      .tabbody{flex:1;overflow:auto;padding:12px 14px}
+      .cols{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+      .sect{min-width:200px}
+      .sect h3{margin:0 0 10px;font-size:12px;color:var(--tx2);letter-spacing:.06em;font-weight:700}
+      .fld{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+      .fld label{width:106px;flex:none;white-space:nowrap}
+      .fld output{font-family:var(--mono);font-size:12px;min-width:64px;color:var(--tx)}
+      .fld input[type=range]{width:130px}
+
+      /* fx chain */
+      .fxwrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+      .chain{width:238px;flex:none;display:flex;flex-direction:column;gap:6px}
+      .fxitem{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);
+        border-radius:8px;padding:5px 7px;cursor:pointer}
+      .fxitem.sel{border-color:var(--acc)}
+      .fxitem.off{opacity:.5}
+      .fxitem .t{font-weight:600;flex:1;white-space:nowrap;overflow:hidden}
+      .fxitem button{min-height:28px;height:28px;padding:0 7px;font-size:11px}
+      .fxeditor{flex:1;min-width:300px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:12px}
+      .fxeditor h3{margin:0 0 10px;font-size:13px}
+      #eqCanvas{width:100%;height:190px;display:block;background:var(--bg);border:1px solid var(--line2);border-radius:8px;touch-action:none}
+      table.params{border-collapse:collapse;width:100%}
+      table.params th,table.params td{padding:3px 4px;text-align:left;font-size:12px}
+      table.params th{color:var(--tx2);font-weight:600}
+      table.params input[type=number]{width:70px}
+      table.params select{min-height:30px;padding:2px 6px}
+      .knobgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px 16px;max-width:760px}
+      .knob label{display:block;font-size:11px;color:var(--tx2);margin-bottom:2px}
+      .knob .row{display:flex;align-items:center;gap:6px}
+      .knob input[type=range]{flex:1;min-width:0}
+      .knob output{font-family:var(--mono);font-size:11.5px;min-width:58px}
+      .grmeter{height:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+      .grmeter i{display:block;height:100%;background:var(--acc2);width:0%}
+
+      /* mixer */
+      .mixer{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+      .strip{width:128px;flex:none;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:9px 8px;
+        display:flex;flex-direction:column;align-items:center;gap:6px}
+      .strip.sel{border-color:var(--acc)}
+      .strip .nm{font-weight:600;font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;max-width:112px}
+      .strip .vfader{writing-mode:vertical-lr;direction:rtl;width:26px;height:104px;accent-color:var(--acc)}
+      .strip .mini{width:100%}
+      .strip .mini label{font-size:10px;color:var(--tx2);display:flex;justify-content:space-between}
+      .strip .mini input[type=range]{width:100%}
+      .strip.ret{border-style:dashed}
+      .dropveil{position:fixed;inset:0;background:rgba(20,30,60,.55);z-index:50;display:none;place-items:center;
+        color:#fff;font-size:20px;font-weight:700;border:4px dashed var(--blue)}
+      .dropveil.show{display:grid}
+      .toast{position:fixed;left:50%;bottom:330px;transform:translateX(-50%);background:var(--bg3);color:var(--tx);
+        border:1px solid var(--line);border-radius:9px;padding:9px 16px;box-shadow:var(--shadow);z-index:60;display:none;max-width:88vw;pointer-events:none}
+      @media (max-width:760px){
+        .tlgrid{grid-template-columns:132px 1fr}
+        .thead{height:84px;padding:6px}
+        .lane{height:84px}
+        .clip{height:68px}
+        .insp{height:46dvh}
+        .timebox{min-width:150px}
+        .empty-note{left:148px;right:12px}
+        .thead .volVal{display:none}
+        .thead .panVal{display:none}
+        .toast{bottom:auto;top:70px}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- transport -->
+      <div class="transport">
+        <div class="grp">
+          <button class="tbtn play" id="btnPlay" title="再生 / 停止 (Space)">▶</button>
+          <button class="tbtn" id="btnStop" title="停止して先頭へ">■</button>
+          <button class="tbtn" id="btnLoop" title="ループ再生">↻</button>
+        </div>
+        <div class="timebox">
+          <div class="big" id="timeBig">0:00.000</div>
+          <div class="sub"><span id="timeBar">1小節 1拍</span> ・ <span id="timeLen">0:00</span></div>
+        </div>
+        <div class="grp">
+          <label for="bpmIn">BPM</label>
+          <input type="number" id="bpmIn" value="120" min="40" max="240" step="1" style="width:64px">
+        </div>
+        <div class="grp">
+          <div class="meterwrap" title="マスターレベル"><div class="meter"><i id="mL"></i></div><div class="meter"><i id="mR"></i></div></div>
+          <label for="masterVol">マスター</label>
+          <input type="range" id="masterVol" min="-40" max="6" step="0.5" value="0" style="width:90px">
+        </div>
+        <div class="spacer"></div>
+        <div class="grp">
+          <button id="btnImport">＋ 音声を読み込む</button>
+          <button id="btnDemo">デモ曲を読み直す</button>
+          <button id="btnExportGo" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700">書き出し</button>
+        </div>
+      </div>
+
+      <!-- toolbar -->
+      <div class="toolbar">
+        <div class="grp" style="display:flex;gap:6px;align-items:center">
+          <select id="newTrackType" title="追加するトラックの種類">
+            <option value="vocal">ボーカル</option>
+            <option value="harmony">ハモリ</option>
+            <option value="inst">オケ / 楽器</option>
+          </select>
+          <button id="btnAddTrack">＋ トラック追加</button>
+        </div>
+        <div class="sep"></div>
+        <div class="grp" style="display:flex;gap:6px;align-items:center">
+          <button id="btnSplit">✂ 分割 <span class="kbd">S</span></button>
+          <button id="btnDelClip">クリップ削除 <span class="kbd">Del</span></button>
+          <button id="btnSnap" class="on">スナップ</button>
+        </div>
+        <div class="sep"></div>
+        <div class="grp" style="display:flex;gap:6px;align-items:center">
+          <label>オートメーション</label>
+          <div class="seg" id="autoSeg">
+            <button data-m="off" class="on">オフ</button><button data-m="volume">ボリューム</button><button data-m="pan">パン</button>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="grp" style="display:flex;gap:6px;align-items:center">
+          <label for="zoomR">ズーム</label>
+          <input type="range" id="zoomR" min="8" max="140" step="1" value="42" style="width:110px">
+        </div>
+        <span class="small">クリップはドラッグで移動、両端ドラッグでトリム。Melodyne等で補正済みのWAVもそのままドロップできます。</span>
+      </div>
+
+      <!-- timeline -->
+      <div class="tlwrap" id="tlWrap">
+        <div class="tlgrid" id="tlGrid">
+          <div class="heads" id="heads">
+            <div class="head-spacer"><span>トラック</span><span class="small" id="headInfo"></span></div>
+          </div>
+          <div class="lanes" id="lanes">
+            <canvas class="ruler" id="ruler" height="30"></canvas>
+            <div class="playhead" id="playhead"></div>
+          </div>
+        </div>
+        <div class="empty-note" id="emptyNote" hidden>
+          <h2>まずは音源を読み込もう</h2>
+          <p>カラオケ音源（オケ）と歌声のWAV / MP3 を、この画面へドラッグ＆ドロップするか「音声を読み込む」から追加してください。ピッチ・タイミング補正は外部ツール（Melodyne / VariAudio等）で済ませたWAVを読み込む運用が前提です。</p>
+          <p>すぐに試したい場合はデモ曲（オケ＋ボーカル＋ハモリの3トラック、シンセ生成）が読み込まれています。そのまま再生して、EQ・コンプ・センドリバーブやオートメーションを触ってみてください。</p>
+          <div class="row"><button id="btnImport2">音声ファイルを選ぶ</button><button id="btnCloseNote" class="ghost">閉じる</button></div>
+        </div>
+      </div>
+
+      <!-- inspector -->
+      <div class="insp">
+        <div class="tabs" id="tabs">
+          <button data-t="ch" class="on">チャンネル / クリップ</button>
+          <button data-t="fx">エフェクト</button>
+          <button data-t="mix">ミキサー</button>
+          <button data-t="exp">書き出し</button>
+        </div>
+        <div class="tabbody" id="tabBody"></div>
+      </div>
+    </div>
+
+    <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac" multiple hidden>
+    <div class="dropveil" id="dropVeil">ここに音声ファイルをドロップ</div>
+    <div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   歌ってみたMIX — Web Audio マルチトラックMIX
+   ============================================================ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const db2lin=db=>Math.pow(10,db/20), lin2db=l=>20*Math.log10(Math.max(l,1e-6));
+const fmtT=s=>{s=Math.max(0,s);const m=Math.floor(s/60),ss=s-m*60;return m+":"+ss.toFixed(3).padStart(6,"0")};
+const fmtDb=v=>(v<=-59.5?"-∞":(v>0?"+":"")+v.toFixed(1))+" dB";
+let uid=1; const nid=()=>"id"+(uid++);
+
+const TYPES={inst:{label:"オケ",color:"#7a9e3f",badge:"#5b7a2a"},
+             vocal:{label:"ボーカル",color:"#e2574c",badge:"#c23e34"},
+             harmony:{label:"ハモリ",color:"#4c8de2",badge:"#356cb3"}};
+
+/* ---------- state ---------- */
+const S={
+  ctx:null, master:null, masterComp:null, analyser:null,
+  bpm:120, playing:false, playCtxStart:0, playPosStart:0, pos:0,
+  tracks:[], buses:[], sources:[],
+  selTrack:null, selClip:null, selFx:-1,
+  loop:{on:false,start:0,end:8},
+  autoMode:"off", snap:true, px:42,
+  returns:null, demoLoaded:false,
+};
+
+function defaultFx(type){
+  if(type==="eq") return {type,on:true,bands:[
+    {t:"highpass",f:80,g:0,q:0.71,on:true},
+    {t:"peaking",f:250,g:0,q:1.0,on:true},
+    {t:"peaking",f:1000,g:0,q:1.0,on:true},
+    {t:"peaking",f:3500,g:0,q:1.0,on:true},
+    {t:"highshelf",f:9000,g:0,q:0.71,on:true}]};
+  if(type==="comp") return {type,on:true,threshold:-18,ratio:3,attack:0.01,release:0.25,knee:18,makeup:0};
+  if(type==="reverb") return {type,on:true,decay:2.4,mix:0.3,predelay:0.02};
+  if(type==="delay") return {type,on:true,time:0.375,feedback:0.35,mix:0.25,sync:"d8"};
+  return null;
+}
+function newTrack(name,type){
+  const tr={id:nid(),name,type:type||"vocal",color:TYPES[type||"vocal"].color,
+    clips:[],vol:-3,pan:0,mute:false,solo:false,bus:null,
+    sendRev:type==="inst"?0:0.28, sendDly:0,
+    fx: type==="inst"? [defaultFx("eq")] : [defaultFx("eq"),defaultFx("comp")],
+    auto:{volume:[],pan:[]}, nodes:null};
+  return tr;
+}
+function newBus(name){return {id:nid(),name,vol:0,pan:0};}
+S.buses.push(newBus("ボーカルバス"));
+
+/* ---------- audio engine ---------- */
+function ensureCtx(){
+  if(S.ctx) { if(S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
+  const ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
+  S.ctx=ctx;
+  S.master=ctx.createGain(); S.master.gain.value=db2lin(parseFloat($("#masterVol").value));
+  S.masterComp=ctx.createDynamicsCompressor();
+  S.masterComp.threshold.value=-3; S.masterComp.ratio.value=12; S.masterComp.attack.value=0.002; S.masterComp.release.value=0.18; S.masterComp.knee.value=4;
+  S.analyser=ctx.createAnalyser(); S.analyser.fftSize=256;
+  S.master.connect(S.masterComp); S.masterComp.connect(S.analyser); S.analyser.connect(ctx.destination);
+  buildReturns(ctx,S.master,true);
+  S.tracks.forEach(tr=>buildTrackGraph(tr));
+  S.buses.forEach(b=>buildBusGraph(b));
+  return ctx;
+}
+function makeIR(ctx,decay){
+  const len=Math.max(1,(decay*ctx.sampleRate)|0), buf=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}
+  return buf;
+}
+function buildReturns(ctx,dest,live){
+  const revIn=ctx.createGain(), conv=ctx.createConvolver(), revOut=ctx.createGain();
+  conv.buffer=makeIR(ctx,2.6); revOut.gain.value=0.9;
+  revIn.connect(conv); conv.connect(revOut); revOut.connect(dest);
+  const dlyIn=ctx.createGain(), dly=ctx.createDelay(2), fb=ctx.createGain(), flt=ctx.createBiquadFilter(), dlyOut=ctx.createGain();
+  dly.delayTime.value=0.375; fb.gain.value=0.34; flt.type="lowpass"; flt.frequency.value=4200; dlyOut.gain.value=0.8;
+  dlyIn.connect(dly); dly.connect(flt); flt.connect(fb); fb.connect(dly); flt.connect(dlyOut); dlyOut.connect(dest);
+  const R={revIn,conv,revOut,dlyIn,dly,fb,dlyOut,decay:2.6,dlyTime:0.375,dlyFb:0.34};
+  if(live) S.returns=R;
+  return R;
+}
+function busDest(ctx,busId,live){
+  if(!busId) return live?S.master:null;
+  const b=S.buses.find(x=>x.id===busId);
+  if(b&&b.nodes) return b.nodes.input;
+  return live?S.master:null;
+}
+function buildBusGraph(b){
+  const ctx=S.ctx; if(!ctx) return;
+  const input=ctx.createGain(), g=ctx.createGain(), p=ctx.createStereoPanner();
+  input.connect(g); g.connect(p); p.connect(S.master);
+  g.gain.value=db2lin(b.vol); p.pan.value=b.pan;
+  b.nodes={input,g,p};
+}
+function fxNodes(ctx,fx){
+  /* returns {input,output,parts} chain fragment for one effect */
+  const inp=ctx.createGain(), out=ctx.createGain(); const parts={};
+  if(!fx.on){ inp.connect(out); return {input:inp,output:out,parts,bypass:true}; }
+  if(fx.type==="eq"){
+    let prev=inp; parts.bands=[];
+    fx.bands.forEach(bd=>{ const f=ctx.createBiquadFilter(); f.type=bd.on?bd.t:"allpass"; f.frequency.value=bd.f; f.gain.value=bd.g; f.Q.value=bd.q;
+      prev.connect(f); prev=f; parts.bands.push(f); });
+    prev.connect(out);
+  }else if(fx.type==="comp"){
+    const c=ctx.createDynamicsCompressor(), mk=ctx.createGain();
+    c.threshold.value=fx.threshold;c.ratio.value=fx.ratio;c.attack.value=fx.attack;c.release.value=fx.release;c.knee.value=fx.knee;
+    mk.gain.value=db2lin(fx.makeup); inp.connect(c); c.connect(mk); mk.connect(out);
+    parts.comp=c; parts.mk=mk;
+  }else if(fx.type==="reverb"){
+    const dry=ctx.createGain(), wet=ctx.createGain(), conv=ctx.createConvolver(), pd=ctx.createDelay(0.2);
+    dry.gain.value=1-fx.mix; wet.gain.value=fx.mix; conv.buffer=makeIR(ctx,fx.decay); pd.delayTime.value=fx.predelay||0;
+    inp.connect(dry); dry.connect(out); inp.connect(pd); pd.connect(conv); conv.connect(wet); wet.connect(out);
+    parts.conv=conv; parts.dry=dry; parts.wet=wet; parts.pd=pd;
+  }else if(fx.type==="delay"){
+    const dry=ctx.createGain(), wet=ctx.createGain(), d=ctx.createDelay(2), fb=ctx.createGain(), fl=ctx.createBiquadFilter();
+    dry.gain.value=1-fx.mix; wet.gain.value=fx.mix; d.delayTime.value=fx.time; fb.gain.value=fx.feedback; fl.type="lowpass"; fl.frequency.value=5000;
+    inp.connect(dry); dry.connect(out); inp.connect(d); d.connect(fl); fl.connect(fb); fb.connect(d); fl.connect(wet); wet.connect(out);
+    parts.dly=d; parts.fb=fb; parts.dry=dry; parts.wet=wet;
+  }
+  return {input:inp,output:out,parts};
+}
+function buildTrackGraph(tr){
+  const ctx=S.ctx; if(!ctx) return;
+  if(tr.nodes){ try{tr.nodes.input.disconnect();}catch(e){} }
+  const input=ctx.createGain(), autoG=ctx.createGain(), autoP=ctx.createStereoPanner(),
+        fader=ctx.createGain(), pan=ctx.createStereoPanner(),
+        sRev=ctx.createGain(), sDly=ctx.createGain();
+  let prev=input; const liveFx=[];
+  tr.fx.forEach(fx=>{ const n=fxNodes(ctx,fx); prev.connect(n.input); prev=n.output; liveFx.push(n); });
+  prev.connect(autoG); autoG.connect(autoP); autoP.connect(fader); fader.connect(pan);
+  const dest=busDest(ctx,tr.bus,true);
+  pan.connect(dest);
+  fader.connect(sRev); sRev.connect(S.returns.revIn);
+  fader.connect(sDly); sDly.connect(S.returns.dlyIn);
+  fader.gain.value=db2lin(tr.vol); pan.pan.value=tr.pan;
+  sRev.gain.value=tr.sendRev; sDly.gain.value=tr.sendDly;
+  tr.nodes={input,autoG,autoP,fader,pan,sRev,sDly,liveFx,out:dest};
+}
+function refreshTrackOut(tr){
+  if(!tr.nodes||!S.ctx) return;
+  try{tr.nodes.pan.disconnect();}catch(e){}
+  tr.nodes.pan.connect(busDest(S.ctx,tr.bus,true));
+  tr.nodes.out=busDest(S.ctx,tr.bus,true);
+}
+function applyFxLive(tr,idx,structural){
+  if(!S.ctx||!tr.nodes) return;
+  const fx=tr.fx[idx], live=tr.nodes.liveFx[idx];
+  if(structural||!live||(!!live.bypass!==!fx.on)){
+    buildTrackGraph(tr);
+    if(S.playing) startSources(currentPos());
+    return;
+  }
+  if(!fx.on) return;
+  const p=live.parts, t=S.ctx.currentTime;
+  if(fx.type==="eq"&&p.bands){ fx.bands.forEach((b,j)=>{ const n=p.bands[j]; if(!n)return;
+    n.type=b.on?b.t:"allpass"; n.frequency.setTargetAtTime(b.f,t,0.02); n.gain.setTargetAtTime(b.g,t,0.02); n.Q.setTargetAtTime(b.q,t,0.02); }); }
+  else if(fx.type==="comp"&&p.comp){ p.comp.threshold.setTargetAtTime(fx.threshold,t,0.02);
+    p.comp.ratio.setTargetAtTime(fx.ratio,t,0.02); p.comp.attack.setTargetAtTime(fx.attack,t,0.02);
+    p.comp.release.setTargetAtTime(fx.release,t,0.02); p.comp.knee.setTargetAtTime(fx.knee,t,0.02);
+    p.mk.gain.setTargetAtTime(db2lin(fx.makeup),t,0.02); }
+  else if(fx.type==="reverb"&&p.conv){ p.conv.buffer=makeIR(S.ctx,fx.decay);
+    p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02);
+    p.pd.delayTime.setTargetAtTime(fx.predelay||0,t,0.02); }
+  else if(fx.type==="delay"&&p.dly){ p.dly.delayTime.setTargetAtTime(fx.time,t,0.02);
+    p.fb.gain.setTargetAtTime(fx.feedback,t,0.02);
+    p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02); }
+}
+/* automation value lookup */
+function autoVal(pts,t,def){
+  if(!pts.length) return def;
+  if(t<=pts[0].t) return pts[0].v;
+  for(let i=1;i<pts.length;i++){ if(t<=pts[i].t){ const a=pts[i-1],b=pts[i];
+    return a.v+(b.v-a.v)*((t-a.t)/Math.max(1e-6,b.t-a.t)); } }
+  return pts[pts.length-1].v;
+}
+function scheduleAuto(param,pts,fromPos,ctxNow,toLin){
+  const now=ctxNow, off=fromPos;
+  param.cancelScheduledValues(now);
+  param.setValueAtTime(toLin(autoVal(pts,off,NaN)),now);
+  pts.forEach(p=>{ if(p.t>off) param.linearRampToValueAtTime(toLin(p.v), now+(p.t-off)); });
+}
+function projectEnd(){
+  let e=24;
+  S.tracks.forEach(tr=>tr.clips.forEach(c=>{ e=Math.max(e,c.start+c.dur+3); }));
+  return e;
+}
+/* ---------- playback ---------- */
+function startSources(fromPos){
+  const ctx=S.ctx, now=ctx.currentTime+0.06;
+  stopSources();
+  const anySolo=S.tracks.some(t=>t.solo);
+  S.tracks.forEach(tr=>{
+    if(!tr.nodes) buildTrackGraph(tr);
+    const audible=!tr.mute&&(!anySolo||tr.solo);
+    /* automation */
+    const vg=tr.nodes.autoG.gain, pp=tr.nodes.autoP.pan;
+    if(tr.auto.volume.length) scheduleAuto(vg,tr.auto.volume.map(p=>({t:p.t,v:p.v})),fromPos,now,v=>isNaN(v)?1:db2lin(v));
+    else { vg.cancelScheduledValues(now); vg.setValueAtTime(1,now); }
+    if(tr.auto.pan.length) scheduleAuto(pp,tr.auto.pan,fromPos,now,v=>isNaN(v)?0:v);
+    else { pp.cancelScheduledValues(now); pp.setValueAtTime(0,now); }
+    if(!audible) return;
+    tr.clips.forEach(cl=>{
+      const cEnd=cl.start+cl.dur;
+      if(cEnd<=fromPos) return;
+      const src=ctx.createBufferSource(); src.buffer=cl.buffer;
+      const g=ctx.createGain(); src.connect(g); g.connect(tr.nodes.input);
+      const skip=Math.max(0,fromPos-cl.start);
+      const when=now+Math.max(0,cl.start-fromPos);
+      const playDur=cl.dur-skip; if(playDur<=0) return;
+      /* fades + clip gain */
+      const t0=when, cg=db2lin(cl.gain||0);
+      g.gain.setValueAtTime(cl.fadeIn>0&&skip===0?0.0001:cg,t0);
+      if(cl.fadeIn>0&&skip<cl.fadeIn) g.gain.linearRampToValueAtTime(cg,t0+(cl.fadeIn-skip));
+      else if(skip===0&&cl.fadeIn>0) g.gain.linearRampToValueAtTime(cg,t0+cl.fadeIn);
+      const fadeOutStart=t0+playDur-(cl.fadeOut||0);
+      if(cl.fadeOut>0){ g.gain.setValueAtTime(cg,Math.max(t0,fadeOutStart)); g.gain.linearRampToValueAtTime(0.0001,t0+playDur); }
+      src.start(when,cl.offset+skip,playDur+0.1);
+      S.sources.push(src);
+    });
+  });
+  S.playCtxStart=now; S.playPosStart=fromPos;
+}
+function stopSources(){ S.sources.forEach(s=>{try{s.stop()}catch(e){} try{s.disconnect()}catch(e){}}); S.sources=[]; }
+function play(){
+  ensureCtx();
+  if(S.playing){ pause(); return; }
+  if(S.pos>=projectEnd()-0.05) S.pos=0;
+  startSources(S.pos); S.playing=true; $("#btnPlay").textContent="❚❚"; $("#btnPlay").classList.add("playing");
+}
+function pause(){
+  if(!S.playing) return;
+  S.pos=currentPos(); stopSources(); S.playing=false;
+  $("#btnPlay").textContent="▶"; $("#btnPlay").classList.remove("playing");
+}
+function stopAll(){ pause(); S.pos=0; updatePlayhead(); }
+function currentPos(){
+  if(!S.playing) return S.pos;
+  return S.playPosStart+(S.ctx.currentTime-S.playCtxStart);
+}
+function seek(t){
+  S.pos=clamp(t,0,projectEnd());
+  if(S.playing){ startSources(S.pos); }
+  updatePlayhead();
+}
+
+/* ============================================================
+   デモ曲生成（オケ+ボーカル+ハモリをシンセでレンダリング）
+   ============================================================ */
+const NOTE={C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,B3:246.94,
+  C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,
+  C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880};
+function env(g,t,a,peak,dur,rel){ g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(peak,t+a);
+  g.gain.setValueAtTime(peak,Math.max(t+a,t+dur-rel)); g.gain.linearRampToValueAtTime(0.0001,t+dur); }
+function tone(ctx,dest,freq,t,dur,type,peak,lp){
+  const o=ctx.createOscillator(),g=ctx.createGain(),fl=ctx.createBiquadFilter();
+  o.type=type;o.frequency.value=freq; fl.type="lowpass"; fl.frequency.value=lp||3000;
+  o.connect(fl);fl.connect(g);g.connect(dest); env(g,t,0.012,peak,dur,Math.min(0.09,dur*0.4));
+  o.start(t);o.stop(t+dur+0.05);
+}
+function noiseHit(ctx,dest,t,dur,peak,hp){
+  const len=Math.ceil(dur*ctx.sampleRate),b=ctx.createBuffer(1,len,ctx.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+  const s=ctx.createBufferSource();s.buffer=b;const f=ctx.createBiquadFilter();f.type="highpass";f.frequency.value=hp||6000;
+  const g=ctx.createGain();g.gain.value=peak;s.connect(f);f.connect(g);g.connect(dest);s.start(t);
+}
+function voiceNote(ctx,dest,f,t,dur,peak){
+  const o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.setValueAtTime(f*0.985,t);
+  o.frequency.linearRampToValueAtTime(f,t+Math.min(0.09,dur*0.4));
+  const vib=ctx.createOscillator(), vg=ctx.createGain(); vib.frequency.value=5.4; vg.gain.value=0;
+  vib.connect(vg); vg.connect(o.frequency);
+  vg.gain.setValueAtTime(0,t); vg.gain.linearRampToValueAtTime(f*0.006,t+Math.min(0.35,dur*0.7));
+  const f1=ctx.createBiquadFilter(); f1.type="bandpass"; f1.frequency.value=730; f1.Q.value=1.1;
+  const f2=ctx.createBiquadFilter(); f2.type="bandpass"; f2.frequency.value=1180; f2.Q.value=2.2;
+  const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=3400;
+  const g=ctx.createGain(), g2=ctx.createGain(); g2.gain.value=0.5;
+  o.connect(f1); f1.connect(g); o.connect(f2); f2.connect(g2); g2.connect(g); o.connect(lp); lp.connect(g);
+  g.connect(dest); env(g,t,0.045,peak,dur,Math.min(0.12,dur*0.45));
+  o.start(t); o.stop(t+dur+0.05); vib.start(t); vib.stop(t+dur+0.05);
+}
+/* Render stems by muting: simpler — render 3 offline passes with gain switches */
+async function buildDemoProject(){
+  toast("デモ曲を生成中…");
+  const sr=44100, bpm=120, beat=60/bpm, bar=beat*4, bars=16, dur=bars*bar+0.5;
+  async function pass(want){
+    const oc=new OfflineAudioContext(2,sr*dur,sr);
+    const mk=()=>{const g=oc.createGain();g.connect(oc.destination);return g;};
+    const instBus=mk(), voxBus=mk(), harmBus=mk();
+    instBus.gain.value=want==="inst"?0.95:0; voxBus.gain.value=want==="vox"?1:0; harmBus.gain.value=want==="harm"?1:0;
+    const prog=[["C3","E3","G3"],["G3","B3","D4"],["A3","C4","E4"],["F3","A3","C4"],
+                ["C3","E3","G3"],["G3","B3","D4"],["F3","A3","C4"],["G3","B3","D4"]];
+    for(let b=0;b<bars;b++){
+      const t0=b*bar, ch=prog[b%8], root=NOTE[ch[0]]/2;
+      for(let e=0;e<8;e++) tone(oc,instBus,NOTE[ch[e%3]]*2,t0+e*beat/2,beat*0.55,"triangle",0.10,2600);
+      tone(oc,instBus,root,t0,bar*0.95,"sine",0.30,700);
+      tone(oc,instBus,root*1.5,t0+beat*2,beat*0.9,"sine",0.12,700);
+      for(let q=0;q<4;q++){ const kt=t0+q*beat;
+        const ko=oc.createOscillator(),kg=oc.createGain(); ko.type="sine";
+        ko.frequency.setValueAtTime(130,kt); ko.frequency.exponentialRampToValueAtTime(42,kt+0.11);
+        kg.gain.setValueAtTime(0.85,kt); kg.gain.exponentialRampToValueAtTime(0.001,kt+0.24);
+        ko.connect(kg); kg.connect(instBus); ko.start(kt); ko.stop(kt+0.3);
+        if(q%2===1) noiseHit(oc,instBus,kt,0.16,0.32,1400);
+        noiseHit(oc,instBus,kt,0.05,0.10,7000); noiseHit(oc,instBus,kt+beat/2,0.04,0.06,7000);
+      }
+      ch.forEach(n=>tone(oc,instBus,NOTE[n],t0,bar,"sine",0.028,1200));
+    }
+    const mel=[[0,"E4",1],[1,"G4",1],[2,"A4",1.5],[3.5,"G4",0.5],[4,"E4",1],[5,"D4",1],[6,"C4",2],
+      [8,"D4",1],[9,"E4",1],[10,"G4",1.5],[11.5,"E4",0.5],[12,"D4",1],[13,"B3",1],[14,"C4",2],
+      [16,"E4",1],[17,"G4",1],[18,"A4",1.5],[19.5,"G4",0.5],[20,"C5",1],[21,"A4",1],[22,"G4",2],
+      [24,"A4",1],[25,"G4",1],[26,"E4",1.5],[27.5,"D4",0.5],[28,"E4",1],[29,"D4",1],[30,"C4",2],
+      [32,"E4",1],[33,"G4",1],[34,"A4",1.5],[35.5,"G4",0.5],[36,"E4",1],[37,"D4",1],[38,"C4",2],
+      [40,"D4",1],[41,"E4",1],[42,"G4",1.5],[43.5,"E4",0.5],[44,"D4",1],[45,"B3",1],[46,"C4",2],
+      [48,"C5",1],[49,"A4",1],[50,"G4",1.5],[51.5,"A4",0.5],[52,"C5",1],[53,"D5",1],[54,"E5",2],
+      [56,"D5",1],[57,"C5",1],[58,"A4",1.5],[59.5,"G4",0.5],[60,"E4",1],[61,"D4",1],[62,"C4",2]];
+    const third={C4:"E4",D4:"F4",E4:"G4",G4:"B4",A4:"C5",B3:"D4",C5:"E5",D5:"F5",E5:"G5"};
+    mel.forEach(([bt,n,len])=>{ const t=bt*beat;
+      voiceNote(oc,voxBus,NOTE[n],t,len*beat*0.96,0.34);
+      if(third[n]) voiceNote(oc,harmBus,NOTE[third[n]],t,len*beat*0.96,0.20);
+    });
+    return oc.startRendering();
+  }
+  const [instBuf,voxBuf,harmBuf]=await Promise.all([pass("inst"),pass("vox"),pass("harm")]);
+  pause(); S.tracks=[]; S.selClip=null;
+  const tI=newTrack("オケ（デモ）","inst"); tI.vol=-6; tI.sendRev=0.05;
+  tI.clips.push({id:nid(),name:"オケ",buffer:instBuf,start:0,offset:0,dur:instBuf.duration,gain:0,fadeIn:0,fadeOut:0});
+  const tV=newTrack("メインボーカル（デモ）","vocal"); tV.vol=-2; tV.bus=S.buses[0].id; tV.sendRev=0.3; tV.sendDly=0.08;
+  tV.fx=[defaultFx("eq"),defaultFx("comp")];
+  tV.fx[0].bands[0].f=90; tV.fx[0].bands[3].g=2.5; tV.fx[0].bands[4].g=1.5;
+  tV.clips.push({id:nid(),name:"ボーカル",buffer:voxBuf,start:0,offset:0,dur:voxBuf.duration,gain:0,fadeIn:0.02,fadeOut:0.05});
+  tV.auto.volume=[{t:0,v:-1.5},{t:16,v:-1.5},{t:17,v:0.5},{t:31,v:0.5}];
+  const tH=newTrack("ハモリ（デモ）","harmony"); tH.vol=-9; tH.pan=0.25; tH.bus=S.buses[0].id; tH.sendRev=0.35;
+  tH.clips.push({id:nid(),name:"ハモリ",buffer:harmBuf,start:0,offset:0,dur:harmBuf.duration,gain:0,fadeIn:0.02,fadeOut:0.05});
+  S.tracks=[tI,tV,tH]; S.selTrack=tV.id; S.selFx=0; S.pos=0; S.demoLoaded=true;
+  if(S.ctx) S.tracks.forEach(buildTrackGraph);
+  renderTimeline(); renderInspector(); updatePlayhead();
+  toast("デモ曲を読み込みました。再生ボタンで試聴できます");
+}
+
+/* ============================================================
+   ファイル読み込み
+   ============================================================ */
+async function importFiles(files){
+  ensureCtx();
+  const list=[...files].filter(f=>/audio|\.(wav|mp3|m4a|ogg|flac)$/i.test(f.type+" "+f.name));
+  if(!list.length){ toast("音声ファイルが見つかりませんでした"); return; }
+  for(const f of list){
+    try{
+      const buf=await S.ctx.decodeAudioData(await f.arrayBuffer());
+      const nm=f.name.replace(/\.[^.]+$/,"");
+      const type=/ハモ|harmony|chorus/i.test(nm)?"harmony":(/オケ|inst|off|karaoke|伴奏/i.test(nm)?"inst":"vocal");
+      const tr=newTrack(nm,type);
+      tr.clips.push({id:nid(),name:nm,buffer:buf,start:0,offset:0,dur:buf.duration,gain:0,fadeIn:0,fadeOut:0});
+      if(type!=="inst") tr.bus=S.buses[0].id;
+      S.tracks.push(tr); buildTrackGraph(tr); S.selTrack=tr.id;
+      toast("読み込み: "+f.name);
+    }catch(e){ toast("読み込めませんでした: "+f.name); }
+  }
+  $("#emptyNote").hidden=true;
+  renderTimeline(); renderInspector();
+}
+
+/* ============================================================
+   タイムライン描画
+   ============================================================ */
+const headsEl=$("#heads"), lanesEl=$("#lanes"), rulerEl=$("#ruler");
+function contentW(){ return Math.ceil(projectEnd()*S.px)+80; }
+function beatSec(){ return 60/S.bpm; }
+function drawRuler(){
+  const w=contentW(); rulerEl.width=w; rulerEl.style.width=w+"px";
+  const c=rulerEl.getContext("2d"); c.clearRect(0,0,w,30);
+  const cs=getComputedStyle(document.documentElement);
+  c.fillStyle=cs.getPropertyValue("--tx3"); c.strokeStyle=cs.getPropertyValue("--grid");
+  c.font="10px "+cs.getPropertyValue("--mono"); c.textBaseline="top";
+  const bs=beatSec();
+  for(let b=0;b*bs<projectEnd()+4;b++){
+    const x=Math.round(b*bs*S.px)+0.5, isBar=b%4===0;
+    c.beginPath(); c.moveTo(x,isBar?8:20); c.lineTo(x,30); c.stroke();
+    if(isBar) c.fillText(String(b/4+1),x+4,3);
+  }
+  if(S.loop.on){
+    c.fillStyle="rgba(226,87,76,.28)";
+    c.fillRect(S.loop.start*S.px,0,(S.loop.end-S.loop.start)*S.px,30);
+  }
+}
+function drawWave(canvas,cl){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=canvas.clientWidth||Math.round(cl.dur*S.px), h=canvas.clientHeight||80;
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  const c=canvas.getContext("2d"); c.scale(dpr,dpr);
+  c.fillStyle="rgba(255,255,255,.16)"; c.fillRect(0,0,w,h);
+  const buf=cl.buffer; if(!buf){return;}
+  const ch0=buf.getChannelData(0), ch1=buf.numberOfChannels>1?buf.getChannelData(1):ch0;
+  const startS=Math.floor(cl.offset*buf.sampleRate), lenS=Math.floor(cl.dur*buf.sampleRate);
+  c.fillStyle="rgba(255,255,255,.85)";
+  const mid=h/2;
+  for(let x=0;x<w;x++){
+    const s0=startS+Math.floor(x/w*lenS), s1=startS+Math.floor((x+1)/w*lenS);
+    let mx=0; const step=Math.max(1,((s1-s0)/40)|0);
+    for(let i=s0;i<s1&&i<ch0.length;i+=step){ const v=Math.abs(ch0[i])+Math.abs(ch1[i]); if(v>mx)mx=v; }
+    const y=clamp(mx*0.5,0.02,1)*(mid-3);
+    c.fillRect(x,mid-y,1,Math.max(1,y*2));
+  }
+  /* fades */
+  c.fillStyle="rgba(0,0,0,.35)";
+  if(cl.fadeIn>0){ const fw=cl.fadeIn*S.px; c.beginPath(); c.moveTo(0,0); c.lineTo(fw,0); c.lineTo(0,h); c.closePath(); c.fill(); }
+  if(cl.fadeOut>0){ const fw=cl.fadeOut*S.px; c.beginPath(); c.moveTo(w,0); c.lineTo(w-fw,0); c.lineTo(w,h); c.closePath(); c.fill(); }
+}
+function renderTimeline(){
+  /* heads */
+  headsEl.querySelectorAll(".thead").forEach(e=>e.remove());
+  lanesEl.querySelectorAll(".lane").forEach(e=>e.remove());
+  lanesEl.style.width=contentW()+"px";
+  S.tracks.forEach(tr=>{
+    const hd=document.createElement("div"); hd.className="thead"+(tr.id===S.selTrack?" sel":"");
+    hd.innerHTML=`<div class="nm"><span class="dot" style="background:${tr.color}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(tr.name)}</span>
+      <span class="badge" style="background:${TYPES[tr.type].badge}">${TYPES[tr.type].label}</span></div>
+      <div class="row"><button class="msbtn m ${tr.mute?"on":""}" title="ミュート">M</button>
+      <button class="msbtn s ${tr.solo?"on":""}" title="ソロ">S</button>
+      <input type="range" min="-60" max="6" step="0.5" value="${tr.vol}" title="ボリューム">
+      <span class="small volVal" style="font-family:var(--mono);min-width:52px">${fmtDb(tr.vol)}</span>
+      <button class="del" title="トラック削除">✕</button></div>
+      <div class="row"><span class="small">PAN</span><input type="range" min="-100" max="100" step="1" value="${Math.round(tr.pan*100)}" title="パン">
+      <span class="small panVal" style="font-family:var(--mono);min-width:34px">${panLabel(tr.pan)}</span></div>`;
+    hd.addEventListener("click",e=>{ if(e.target.closest("button,input"))return; selectTrack(tr.id); });
+    const [mBtn,sBtn,delBtn]=[hd.querySelector(".m"),hd.querySelector(".s"),hd.querySelector(".del")];
+    const volR=hd.querySelectorAll("input[type=range]")[0], panR=hd.querySelectorAll("input[type=range]")[1];
+    mBtn.onclick=()=>{tr.mute=!tr.mute; if(S.playing)startSources(currentPos()); renderTimeline();};
+    sBtn.onclick=()=>{tr.solo=!tr.solo; if(S.playing)startSources(currentPos()); renderTimeline();};
+    delBtn.onclick=()=>{ if(S.tracks.length<=1){toast("最後のトラックは削除できません");return;}
+      S.tracks=S.tracks.filter(t=>t.id!==tr.id); if(S.selTrack===tr.id)S.selTrack=S.tracks[0].id;
+      if(S.playing)startSources(currentPos()); renderTimeline(); renderInspector(); };
+    volR.oninput=()=>{ tr.vol=parseFloat(volR.value); hd.querySelector(".volVal").textContent=fmtDb(tr.vol);
+      if(tr.nodes)tr.nodes.fader.gain.setTargetAtTime(db2lin(tr.vol),S.ctx.currentTime,0.03); syncMixer(); };
+    panR.oninput=()=>{ tr.pan=parseFloat(panR.value)/100; hd.querySelector(".panVal").textContent=panLabel(tr.pan);
+      if(tr.nodes)tr.nodes.pan.pan.setTargetAtTime(tr.pan,S.ctx.currentTime,0.03); syncMixer(); };
+    headsEl.appendChild(hd);
+
+    const ln=document.createElement("div"); ln.className="lane"+(tr.id===S.selTrack?" sel":""); ln.dataset.tid=tr.id;
+    ln.style.backgroundImage=`repeating-linear-gradient(to right, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent ${beatSec()*S.px}px),
+      repeating-linear-gradient(to right, var(--gridbar) 0, var(--gridbar) 1px, transparent 1px, transparent ${beatSec()*4*S.px}px)`;
+    tr.clips.forEach(cl=>{
+      const el=document.createElement("div"); el.className="clip"+(cl.id===S.selClip?" sel":"");
+      el.style.left=(cl.start*S.px)+"px"; el.style.width=Math.max(8,cl.dur*S.px)+"px";
+      el.style.background=`linear-gradient(180deg, ${tr.color}cc, ${tr.color}88)`;
+      el.innerHTML=`<canvas></canvas><div class="cap">${esc(cl.name)}</div><div class="edge l"></div><div class="edge r"></div>`;
+      el.addEventListener("pointerdown",e=>clipPointer(e,tr,cl,el));
+      ln.appendChild(el);
+      requestAnimationFrame(()=>drawWave(el.querySelector("canvas"),cl));
+    });
+    if(S.autoMode!=="off"&&tr.id===S.selTrack){
+      const ac=document.createElement("canvas"); ac.className="autocanvas"; ac.dataset.tid=tr.id;
+      ln.appendChild(ac); requestAnimationFrame(()=>{sizeAutoCanvas(ac,tr); drawAuto(ac,tr);});
+      ac.addEventListener("pointerdown",e=>autoPointer(e,tr,ac));
+    }
+    ln.addEventListener("pointerdown",e=>{ if(e.target===ln){ selectTrack(tr.id); S.selClip=null; renderTimeline(); renderInspector(); }});
+    lanesEl.appendChild(ln);
+  });
+  drawRuler(); updatePlayhead();
+  $("#headInfo").textContent=S.tracks.length+" trk";
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function panLabel(p){ return p===0?"C":(p<0?"L"+Math.round(-p*100):"R"+Math.round(p*100)); }
+function selectTrack(id){ S.selTrack=id; S.selFx=S.tracks.find(t=>t.id===id)?.fx.length?0:-1; renderTimeline(); renderInspector(); }
+function selTrackObj(){ return S.tracks.find(t=>t.id===S.selTrack)||S.tracks[0]; }
+function findClip(id){ for(const tr of S.tracks){ const cl=tr.clips.find(c=>c.id===id); if(cl) return {tr,cl}; } return null; }
+
+/* ---------- clip drag / trim ---------- */
+function clipPointer(e,tr,cl,el){
+  if(e.button!==0) return;
+  e.preventDefault(); selectTrackSilent(tr.id); S.selClip=cl.id; renderTimeline(); renderInspector();
+  /* re-render replaced the DOM: find this clip's fresh element */
+  const lane2=lanesEl.querySelector(`.lane[data-tid="${tr.id}"]`); if(!lane2) return;
+  const idx=tr.clips.indexOf(cl); const el2=lane2.querySelectorAll(".clip")[idx]; if(!el2) return;
+  const x0=e.clientX;
+  const mode=e.target.classList.contains("l")?"trimL":(e.target.classList.contains("r")?"trimR":"move");
+  const orig={start:cl.start,offset:cl.offset,dur:cl.dur};
+  const snapT=t=>{ if(!S.snap||e.altKey) return t; const g=beatSec()/2; return Math.round(t/g)*g; };
+  function mv(ev){
+    const dt=(ev.clientX-x0)/S.px;
+    if(mode==="move"){ cl.start=Math.max(0,snapT(orig.start+dt)); }
+    else if(mode==="trimL"){ const ns=clamp(snapT(orig.start+dt),Math.max(0,orig.start-orig.offset),orig.start+orig.dur-0.05);
+      cl.offset=orig.offset+(ns-orig.start); cl.dur=orig.dur-(ns-orig.start); cl.start=ns; }
+    else { cl.dur=clamp(orig.dur+dt,0.05,cl.buffer.duration-cl.offset); if(S.snap&&!ev.altKey){ const g=beatSec()/2; cl.dur=Math.max(0.05,Math.round(cl.dur/g)*g); } }
+    el2.style.left=(cl.start*S.px)+"px"; el2.style.width=Math.max(8,cl.dur*S.px)+"px";
+  }
+  function up(){ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up);
+    drawWave(el2.querySelector("canvas"),cl); renderInspector(); if(S.playing) startSources(currentPos()); }
+  window.addEventListener("pointermove",mv); window.addEventListener("pointerup",up);
+}
+function selectTrackSilent(id){ S.selTrack=id; }
+
+/* ---------- ruler: seek & loop ---------- */
+(function(){
+  let drag=null;
+  rulerEl.addEventListener("pointerdown",e=>{
+    const r=rulerEl.getBoundingClientRect(); const t=(e.clientX-r.left)/S.px;
+    drag={t0:t,moved:false}; rulerEl.setPointerCapture(e.pointerId);
+  });
+  rulerEl.addEventListener("pointermove",e=>{
+    if(!drag) return; const r=rulerEl.getBoundingClientRect(); const t=(e.clientX-r.left)/S.px;
+    if(Math.abs(t-drag.t0)>4/S.px){ drag.moved=true; S.loop.start=Math.min(drag.t0,t); S.loop.end=Math.max(drag.t0,t); S.loop.on=true; $("#btnLoop").classList.add("on"); drawRuler(); }
+  });
+  rulerEl.addEventListener("pointerup",e=>{
+    if(!drag) return;
+    if(!drag.moved) seek(drag.t0); else if(S.playing){ S.pos=S.loop.start; startSources(S.pos); }
+    drag=null;
+  });
+})();
+
+/* ---------- automation editing ---------- */
+function sizeAutoCanvas(ac,tr){ const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=ac.clientWidth||contentW(), h=ac.clientHeight||96;
+  ac.width=w*dpr; ac.height=h*dpr; ac.getContext("2d").scale(dpr,dpr); ac._w=w; ac._h=h; }
+function autoY2V(y,h){ return S.autoMode==="volume"? clamp(6-(y/h)*72,-60,6) : clamp(1-(y/h)*2,-1,1); }
+function autoV2Y(v,h){ return S.autoMode==="volume"? (6-v)/72*h : (1-v)/2*h; }
+function drawAuto(ac,tr){
+  const c=ac.getContext("2d"), w=ac._w, h=ac._h; if(!w) return;
+  c.clearRect(0,0,w,h);
+  c.fillStyle=S.autoMode==="volume"?"rgba(226,87,76,.10)":"rgba(76,141,226,.10)"; c.fillRect(0,0,w,h);
+  const pts=[...tr.auto[S.autoMode]].sort((a,b)=>a.t-b.t);
+  const defV=S.autoMode==="volume"?tr.vol:tr.pan;
+  const drawPts=pts.length?pts:[{t:0,v:defV}];
+  const trace=()=>{ c.beginPath(); c.moveTo(0,autoV2Y(drawPts[0].v,h));
+    drawPts.forEach(p=>c.lineTo(p.t*S.px,autoV2Y(p.v,h)));
+    c.lineTo(w,autoV2Y(drawPts[drawPts.length-1].v,h)); };
+  c.strokeStyle="rgba(0,0,0,.45)"; c.lineWidth=5; trace(); c.stroke();
+  c.strokeStyle=S.autoMode==="volume"?"#ff7a6e":"#7db3f0"; c.lineWidth=2.5; trace(); c.stroke();
+  c.fillStyle="#fff";
+  pts.forEach(p=>{ c.beginPath(); c.arc(p.t*S.px,autoV2Y(p.v,h),5,0,7); c.fill();
+    c.strokeStyle=S.autoMode==="volume"?"#e2574c":"#4c8de2"; c.stroke(); });
+  c.fillStyle="rgba(255,255,255,.75)"; c.font="11px sans-serif";
+  c.fillText(S.autoMode==="volume"?"ボリューム・オートメーション（クリックで点を追加、右クリックで削除）":"パン・オートメーション（クリックで点を追加、右クリックで削除）",10,16);
+}
+function autoPointer(e,tr,ac){
+  e.preventDefault();
+  const r=ac.getBoundingClientRect(); const h=ac._h||ac.clientHeight;
+  const t=(e.clientX-r.left)/S.px, v=autoY2V(e.clientY-r.top,h);
+  const pts=tr.auto[S.autoMode];
+  let hit=pts.findIndex(p=>Math.abs(p.t-t)<8/S.px&&Math.abs(autoV2Y(p.v,h)-(e.clientY-r.top))<10);
+  if(e.button===2){ if(hit>=0){ pts.splice(hit,1); drawAuto(ac,tr); if(S.playing)startSources(currentPos()); } return; }
+  if(hit<0){ pts.push({t:Math.max(0,t),v}); pts.sort((a,b)=>a.t-b.t); hit=pts.findIndex(p=>p.t===Math.max(0,t)); }
+  const p=pts[hit]; if(!p) return;
+  function mv(ev){ const nt=clamp((ev.clientX-r.left)/S.px,0,projectEnd());
+    p.t=S.snap?Math.round(nt/(beatSec()/4))*(beatSec()/4):nt; p.v=autoY2V(ev.clientY-r.top,h);
+    pts.sort((a,b)=>a.t-b.t); drawAuto(ac,tr); }
+  function up(){ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up);
+    if(S.playing) startSources(currentPos()); }
+  window.addEventListener("pointermove",mv); window.addEventListener("pointerup",up);
+  drawAuto(ac,tr);
+}
+lanesEl.addEventListener("contextmenu",e=>{ if(S.autoMode!=="off") e.preventDefault(); });
+
+/* ============================================================
+   インスペクタ
+   ============================================================ */
+let curTab="ch";
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display="block";
+  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2600); }
+function renderInspector(){
+  $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===curTab));
+  const body=$("#tabBody");
+  if(curTab==="ch") body.innerHTML=chHTML(), wireCh();
+  else if(curTab==="fx") body.innerHTML=fxHTML(), wireFx();
+  else if(curTab==="mix") body.innerHTML=mixHTML(), wireMix();
+  else body.innerHTML=expHTML(), wireExp();
+}
+$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+  curTab=b.dataset.t; renderInspector(); });
+
+/* ----- チャンネル / クリップ ----- */
+function chHTML(){
+  const tr=selTrackObj(); if(!tr) return "<p class='small'>トラックがありません</p>";
+  const fc=findClip(S.selClip); const cl=fc&&fc.tr.id===tr.id?fc.cl:null;
+  const busOpts=`<option value="">マスターへ直接</option>`+S.buses.map(b=>`<option value="${b.id}" ${tr.bus===b.id?"selected":""}>${esc(b.name)}</option>`).join("");
+  let h=`<div class="cols">
+  <div class="sect"><h3>トラック設定 — ${esc(tr.name)}</h3>
+    <div class="fld"><label>名前</label><input type="text" id="chName" value="${esc(tr.name)}" style="width:170px"></div>
+    <div class="fld"><label>種類</label><select id="chType">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${tr.type===k?"selected":""}>${v.label}</option>`).join("")}</select></div>
+    <div class="fld"><label>送り先バス</label><select id="chBus">${busOpts}</select></div>
+    <div class="fld"><label>ボリューム</label><input type="range" id="chVol" min="-60" max="6" step="0.5" value="${tr.vol}"><output>${fmtDb(tr.vol)}</output></div>
+    <div class="fld"><label>パン</label><input type="range" id="chPan" min="-100" max="100" step="1" value="${Math.round(tr.pan*100)}"><output>${panLabel(tr.pan)}</output></div>
+    <div class="fld"><label>リバーブ・センド</label><input type="range" id="chSendR" min="0" max="100" step="1" value="${Math.round(tr.sendRev*100)}"><output>${Math.round(tr.sendRev*100)}%</output></div>
+    <div class="fld"><label>ディレイ・センド</label><input type="range" id="chSendD" min="0" max="100" step="1" value="${Math.round(tr.sendDly*100)}"><output>${Math.round(tr.sendDly*100)}%</output></div>
+    <p class="small">センドはリターン側のリバーブ／ディレイへ送る量です。バスにまとめると複数トラックへ一括で同じ処理をかけられます。</p>
+  </div>
+  <div class="sect"><h3>バス</h3>
+    ${S.buses.map(b=>`<div class="fld"><label style="width:110px">${esc(b.name)}</label><input type="range" data-bus="${b.id}" class="busVol" min="-60" max="6" step="0.5" value="${b.vol}"><output>${fmtDb(b.vol)}</output></div>`).join("")}
+    <div class="fld"><input type="text" id="newBusName" placeholder="新しいバス名" style="width:130px"><button id="btnAddBus">バス追加</button></div>
+    <h3 style="margin-top:16px">リターン（センド先）</h3>
+    <div class="fld"><label>リバーブ残響</label><input type="range" id="retDecay" min="0.4" max="6" step="0.1" value="${S.returns?S.returns.decay:2.6}"><output>${(S.returns?S.returns.decay:2.6).toFixed(1)} 秒</output></div>
+    <div class="fld"><label>ディレイ時間</label><input type="range" id="retDlyT" min="0.03" max="1" step="0.005" value="${S.returns?S.returns.dlyTime:0.375}"><output>${Math.round((S.returns?S.returns.dlyTime:0.375)*1000)} ms</output></div>
+    <div class="fld"><label>ディレイ反復</label><input type="range" id="retDlyF" min="0" max="0.85" step="0.01" value="${S.returns?S.returns.dlyFb:0.34}"><output>${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</output></div>
+  </div>`;
+  if(cl){
+    h+=`<div class="sect"><h3>選択クリップ — ${esc(cl.name)}</h3>
+    <div class="fld"><label>開始位置</label><input type="number" id="clStart" step="0.01" min="0" value="${cl.start.toFixed(2)}"><span class="small">秒</span></div>
+    <div class="fld"><label>ゲイン</label><input type="range" id="clGain" min="-24" max="12" step="0.5" value="${cl.gain||0}"><output>${fmtDb(cl.gain||0)}</output></div>
+    <div class="fld"><label>フェードイン</label><input type="number" id="clFI" step="0.01" min="0" max="${cl.dur}" value="${(cl.fadeIn||0).toFixed(2)}"><span class="small">秒</span></div>
+    <div class="fld"><label>フェードアウト</label><input type="number" id="clFO" step="0.01" min="0" max="${cl.dur}" value="${(cl.fadeOut||0).toFixed(2)}"><span class="small">秒</span></div>
+    <div class="fld"><button id="clSplit2">再生位置で分割</button><button id="clDel2">クリップ削除</button></div>
+    <p class="small">長さ ${(cl.dur).toFixed(2)} 秒 / 元音源オフセット ${cl.offset.toFixed(2)} 秒</p></div>`;
+  } else {
+    h+=`<div class="sect"><h3>クリップ</h3><p class="small">タイムライン上のクリップをクリックすると、ゲインやフェードを編集できます。分割は再生ヘッド位置で行います（<span class="kbd">S</span>）。</p></div>`;
+  }
+  return h+"</div>";
+}
+function wireCh(){
+  const tr=selTrackObj(); if(!tr) return;
+  const R=(id,fn)=>{ const el=$(id); if(el) el.addEventListener("input",fn); };
+  R("#chName",e=>{ tr.name=e.target.value; renderTimeline(); });
+  $("#chType").addEventListener("change",e=>{ tr.type=e.target.value; tr.color=TYPES[tr.type].color; renderTimeline(); });
+  $("#chBus").addEventListener("change",e=>{ tr.bus=e.target.value||null; refreshTrackOut(tr); });
+  R("#chVol",e=>{ tr.vol=parseFloat(e.target.value); e.target.nextElementSibling.textContent=fmtDb(tr.vol);
+    if(tr.nodes)tr.nodes.fader.gain.setTargetAtTime(db2lin(tr.vol),S.ctx.currentTime,0.03); renderTimelineSoft(); });
+  R("#chPan",e=>{ tr.pan=parseFloat(e.target.value)/100; e.target.nextElementSibling.textContent=panLabel(tr.pan);
+    if(tr.nodes)tr.nodes.pan.pan.setTargetAtTime(tr.pan,S.ctx.currentTime,0.03); renderTimelineSoft(); });
+  R("#chSendR",e=>{ tr.sendRev=parseFloat(e.target.value)/100; e.target.nextElementSibling.textContent=e.target.value+"%";
+    if(tr.nodes)tr.nodes.sRev.gain.setTargetAtTime(tr.sendRev,S.ctx.currentTime,0.03); });
+  R("#chSendD",e=>{ tr.sendDly=parseFloat(e.target.value)/100; e.target.nextElementSibling.textContent=e.target.value+"%";
+    if(tr.nodes)tr.nodes.sDly.gain.setTargetAtTime(tr.sendDly,S.ctx.currentTime,0.03); });
+  $$(".busVol").forEach(el=>el.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===el.dataset.bus);
+    b.vol=parseFloat(el.value); el.nextElementSibling.textContent=fmtDb(b.vol);
+    if(b.nodes)b.nodes.g.gain.setTargetAtTime(db2lin(b.vol),S.ctx.currentTime,0.03); }));
+  const ab=$("#btnAddBus"); if(ab) ab.onclick=()=>{ const nm=($("#newBusName").value||"バス").trim();
+    const b=newBus(nm); S.buses.push(b); if(S.ctx)buildBusGraph(b); renderInspector(); toast("バス「"+nm+"」を追加しました"); };
+  R("#retDecay",e=>{ const v=parseFloat(e.target.value); e.target.nextElementSibling.textContent=v.toFixed(1)+" 秒";
+    if(S.returns){ S.returns.decay=v; S.returns.conv.buffer=makeIR(S.ctx,v); } });
+  R("#retDlyT",e=>{ const v=parseFloat(e.target.value); e.target.nextElementSibling.textContent=Math.round(v*1000)+" ms";
+    if(S.returns){ S.returns.dlyTime=v; S.returns.dly.delayTime.setTargetAtTime(v,S.ctx.currentTime,0.03); } });
+  R("#retDlyF",e=>{ const v=parseFloat(e.target.value); e.target.nextElementSibling.textContent=Math.round(v*100)+"%";
+    if(S.returns){ S.returns.dlyFb=v; S.returns.fb.gain.setTargetAtTime(v,S.ctx.currentTime,0.03); } });
+  const fc=findClip(S.selClip); if(fc&&fc.tr.id===tr.id){ const cl=fc.cl;
+    R("#clStart",e=>{ cl.start=Math.max(0,parseFloat(e.target.value)||0); renderTimeline(); });
+    R("#clGain",e=>{ cl.gain=parseFloat(e.target.value); e.target.nextElementSibling.textContent=fmtDb(cl.gain); if(S.playing)startSources(currentPos()); });
+    R("#clFI",e=>{ cl.fadeIn=clamp(parseFloat(e.target.value)||0,0,cl.dur); renderTimeline(); if(S.playing)startSources(currentPos()); });
+    R("#clFO",e=>{ cl.fadeOut=clamp(parseFloat(e.target.value)||0,0,cl.dur); renderTimeline(); if(S.playing)startSources(currentPos()); });
+    const sp=$("#clSplit2"); if(sp) sp.onclick=splitSelected;
+    const dl=$("#clDel2"); if(dl) dl.onclick=deleteSelected;
+  }
+}
+function renderTimelineSoft(){ /* ヘッダーのフェーダー表示だけ同期（全体再描画は入力中フォーカスを壊すため避ける） */ syncMixer(); }
+
+/* ----- エフェクト ----- */
+const FXNAMES={eq:"パラメトリックEQ",comp:"コンプレッサー",reverb:"リバーブ",delay:"ディレイ"};
+function fxHTML(){
+  const tr=selTrackObj(); if(!tr) return "<p class='small'>トラックがありません</p>";
+  if(S.selFx>=tr.fx.length) S.selFx=tr.fx.length-1;
+  const chain=tr.fx.map((fx,i)=>`<div class="fxitem ${i===S.selFx?"sel":""} ${fx.on?"":"off"}" data-i="${i}" draggable="true">
+    <span class="t">${FXNAMES[fx.type]}</span>
+    <button data-act="up" title="前へ">↑</button><button data-act="down" title="後へ">↓</button>
+    <button data-act="on">${fx.on?"ON":"OFF"}</button><button data-act="del">✕</button></div>`).join("");
+  let ed="<p class='small'>左のリストからエフェクトを選ぶと、ここでパラメータを編集できます。接続順はドラッグまたは ↑↓ で並び替えできます。</p>";
+  const fx=tr.fx[S.selFx];
+  if(fx){
+    if(fx.type==="eq") ed=eqEditorHTML(fx);
+    else if(fx.type==="comp") ed=compEditorHTML(fx);
+    else if(fx.type==="reverb") ed=knobEditorHTML("リバーブ（インサート）",[
+      {k:"decay",label:"残響時間 Decay",min:0.3,max:7,step:0.1,val:fx.decay,unit:" 秒",fmt:v=>v.toFixed(1)},
+      {k:"predelay",label:"プリディレイ",min:0,max:0.15,step:0.005,val:fx.predelay,unit:" ms",fmt:v=>Math.round(v*1000)},
+      {k:"mix",label:"ミックス Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
+    else if(fx.type==="delay") ed=knobEditorHTML("ディレイ（インサート）",[
+      {k:"time",label:"時間 Time",min:0.02,max:1.2,step:0.005,val:fx.time,unit:" ms",fmt:v=>Math.round(v*1000)},
+      {k:"feedback",label:"フィードバック",min:0,max:0.85,step:0.01,val:fx.feedback,unit:"%",fmt:v=>Math.round(v*100)},
+      {k:"mix",label:"ミックス Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}])+
+      `<div class="fld" style="margin-top:10px"><label style="width:auto">拍同期</label><select id="dlySync">
+        ${[["off","同期しない"],["4","4分音符"],["d8","付点8分"],["8","8分音符"],["16","16分音符"],["t8","8分三連"]].map(([v,l])=>`<option value="${v}" ${fx.sync===v?"selected":""}>${l}</option>`).join("")}</select>
+        <span class="small">BPM ${S.bpm} に同期した時間をセットします</span></div>`;
+  }
+  return `<div class="fxwrap"><div class="chain"><h3 style="margin:0 0 4px;font-size:12px;color:var(--tx2)">インサート — ${esc(tr.name)}</h3>
+    ${chain||"<p class='small'>エフェクトなし</p>"}
+    <div class="fld" style="margin-top:6px"><select id="addFxType"><option value="eq">EQ</option><option value="comp">コンプレッサー</option><option value="reverb">リバーブ</option><option value="delay">ディレイ</option></select>
+    <button id="btnAddFx">＋ 追加</button></div></div>
+    <div class="fxeditor">${ed}</div></div>`;
+}
+function eqEditorHTML(fx){
+  const rows=fx.bands.map((b,i)=>`<tr>
+    <td><button data-bon="${i}" style="min-height:28px;height:28px;padding:0 8px">${b.on?"ON":"OFF"}</button></td>
+    <td><select data-bt="${i}">${["highpass","lowpass","lowshelf","peaking","highshelf","notch"].map(t=>`<option ${b.t===t?"selected":""}>${t}</option>`).join("")}</select></td>
+    <td><input type="number" data-bf="${i}" min="20" max="20000" step="1" value="${Math.round(b.f)}"></td>
+    <td><input type="number" data-bg="${i}" min="-24" max="24" step="0.5" value="${b.g}" ${b.t==="highpass"||b.t==="lowpass"||b.t==="notch"?"disabled":""}></td>
+    <td><input type="number" data-bq="${i}" min="0.1" max="18" step="0.05" value="${b.q}"></td></tr>`).join("");
+  return `<h3>パラメトリックEQ — ハンドルをドラッグ（横=周波数 / 縦=ゲイン）、ホイールでQ</h3>
+    <canvas id="eqCanvas"></canvas>
+    <table class="params"><tr><th></th><th>タイプ</th><th>周波数 Hz</th><th>ゲイン dB</th><th>Q</th></tr>${rows}</table>`;
+}
+function compEditorHTML(fx){
+  return `<h3>コンプレッサー — フルコントロール</h3><div class="knobgrid">
+    ${knobHTML("threshold","スレッショルド",-60,0,0.5,fx.threshold,v=>v.toFixed(1)+" dB")}
+    ${knobHTML("ratio","レシオ",1,20,0.1,fx.ratio,v=>v.toFixed(1)+" : 1")}
+    ${knobHTML("attack","アタック",0,0.25,0.001,fx.attack,v=>Math.round(v*1000)+" ms")}
+    ${knobHTML("release","リリース",0.01,1,0.005,fx.release,v=>Math.round(v*1000)+" ms")}
+    ${knobHTML("knee","ニー",0,40,1,fx.knee,v=>v.toFixed(0)+" dB")}
+    ${knobHTML("makeup","メイクアップ",0,24,0.5,fx.makeup,v=>"+"+v.toFixed(1)+" dB")}
+    </div>
+    <div style="max-width:420px;margin-top:12px"><label class="small">ゲインリダクション（再生中）</label>
+    <div class="grmeter"><i id="grBar"></i></div></div>`;
+}
+function knobHTML(k,label,min,max,step,val,fmt){ return `<div class="knob"><label>${label}</label>
+  <div class="row"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><output>${fmt(val)}</output></div></div>`; }
+function knobEditorHTML(title,defs){
+  return `<h3>${title}</h3><div class="knobgrid">${defs.map(d=>knobHTML(d.k,d.label,d.min,d.max,d.step,d.val,v=>d.fmt(v)+ (d.unit==="% "?"":d.unit==="%"?"%":d.unit))).join("")}</div>`;
+}
+function wireFx(){
+  const tr=selTrackObj(); if(!tr) return;
+  $$(".fxitem").forEach(item=>{
+    const i=parseInt(item.dataset.i);
+    item.addEventListener("click",e=>{
+      const act=e.target.dataset&&e.target.dataset.act;
+      if(act==="on"){ tr.fx[i].on=!tr.fx[i].on; applyFxLive(tr,i); renderInspector(); return; }
+      if(act==="del"){ tr.fx.splice(i,1); S.selFx=-1; applyFxLive(tr,i,true); renderInspector(); return; }
+      if(act==="up"&&i>0){ [tr.fx[i-1],tr.fx[i]]=[tr.fx[i],tr.fx[i-1]]; S.selFx=i-1; applyFxLive(tr,i,true); renderInspector(); return; }
+      if(act==="down"&&i<tr.fx.length-1){ [tr.fx[i+1],tr.fx[i]]=[tr.fx[i],tr.fx[i+1]]; S.selFx=i+1; applyFxLive(tr,i,true); renderInspector(); return; }
+      if(!act){ S.selFx=i; renderInspector(); }
+    });
+    item.addEventListener("dragstart",e=>{ e.dataTransfer.setData("text/plain",String(i)); });
+    item.addEventListener("dragover",e=>e.preventDefault());
+    item.addEventListener("drop",e=>{ e.preventDefault(); const from=parseInt(e.dataTransfer.getData("text/plain"));
+      if(isNaN(from)||from===i) return; const [m]=tr.fx.splice(from,1); tr.fx.splice(i,0,m); S.selFx=i; applyFxLive(tr,i,true); renderInspector(); });
+  });
+  const add=$("#btnAddFx"); if(add) add.onclick=()=>{ tr.fx.push(defaultFx($("#addFxType").value)); S.selFx=tr.fx.length-1; applyFxLive(tr,S.selFx,true); renderInspector(); };
+  const fx=tr.fx[S.selFx]; if(!fx) return;
+  if(fx.type==="eq") wireEq(tr,fx);
+  else if(fx.type==="comp"){ $$(".knob input").forEach(inp=>inp.addEventListener("input",()=>{
+    fx[inp.dataset.k]=parseFloat(inp.value); inp.nextElementSibling.textContent=compFmt(inp.dataset.k,fx[inp.dataset.k]);
+    applyFxLive(tr,S.selFx); })); }
+  else { $$(".knob input").forEach(inp=>inp.addEventListener("input",()=>{
+    fx[inp.dataset.k]=parseFloat(inp.value);
+    inp.nextElementSibling.textContent=fxFmt(fx.type,inp.dataset.k,fx[inp.dataset.k]);
+    applyFxLive(tr,S.selFx); }));
+    const ds=$("#dlySync"); if(ds) ds.addEventListener("change",()=>{ fx.sync=ds.value;
+      const b=60/S.bpm; const map={"4":b,"d8":b*0.75,"8":b/2,"16":b/4,"t8":b/3};
+      if(map[fx.sync]){ fx.time=map[fx.sync]; applyFxLive(tr,S.selFx); renderInspector(); } });
+  }
+}
+function compFmt(k,v){ return {threshold:v.toFixed(1)+" dB",ratio:v.toFixed(1)+" : 1",attack:Math.round(v*1000)+" ms",release:Math.round(v*1000)+" ms",knee:v.toFixed(0)+" dB",makeup:"+"+v.toFixed(1)+" dB"}[k]; }
+function fxFmt(type,k,v){ if(k==="mix"||k==="feedback") return Math.round(v*100)+"%";
+  if(k==="decay") return v.toFixed(1)+" 秒"; if(k==="predelay") return Math.round(v*1000)+" ms";
+  if(k==="time") return Math.round(v*1000)+" ms"; return String(v); }
+/* EQ graph */
+function wireEq(tr,fx){
+  const cv=$("#eqCanvas"); if(!cv) return;
+  $$("[data-bf]").forEach(inp=>inp.addEventListener("input",()=>{ fx.bands[+inp.dataset.bf].f=clamp(parseFloat(inp.value)||100,20,20000); applyFxLive(tr,S.selFx); drawEq(cv,fx); }));
+  $$("[data-bg]").forEach(inp=>inp.addEventListener("input",()=>{ fx.bands[+inp.dataset.bg].g=clamp(parseFloat(inp.value)||0,-24,24); applyFxLive(tr,S.selFx); drawEq(cv,fx); }));
+  $$("[data-bq]").forEach(inp=>inp.addEventListener("input",()=>{ fx.bands[+inp.dataset.bq].q=clamp(parseFloat(inp.value)||1,0.1,18); applyFxLive(tr,S.selFx); drawEq(cv,fx); }));
+  $$("[data-bt]").forEach(sel=>sel.addEventListener("change",()=>{ fx.bands[+sel.dataset.bt].t=sel.value; applyFxLive(tr,S.selFx); renderInspector(); }));
+  $$("[data-bon]").forEach(b=>b.addEventListener("click",()=>{ const bd=fx.bands[+b.dataset.bon]; bd.on=!bd.on; applyFxLive(tr,S.selFx); renderInspector(); }));
+  drawEq(cv,fx);
+  let dragB=-1;
+  const pos2fb=(x,y,w,h)=>{ const f=20*Math.pow(1000,x/w); const g=clamp(18-(y/h)*36,-24,24); return {f,g}; };
+  cv.addEventListener("pointerdown",e=>{ const r=cv.getBoundingClientRect();
+    const x=e.clientX-r.left,y=e.clientY-r.top;
+    let best=1e9; fx.bands.forEach((b,i)=>{ const bx=Math.log10(b.f/20)/3*r.width, by=(18-b.g)/36*r.height;
+      const d=(bx-x)**2+(by-y)**2; if(d<best){best=d;dragB=i;} });
+    if(best>30*30) dragB=-1;
+    if(dragB>=0){ cv.setPointerCapture(e.pointerId); moveEq(e); } });
+  function moveEq(e){ if(dragB<0) return; const r=cv.getBoundingClientRect();
+    const {f,g}=pos2fb(e.clientX-r.left,e.clientY-r.top,r.width,r.height);
+    const b=fx.bands[dragB]; b.f=clamp(f,20,20000); if(!["highpass","lowpass","notch"].includes(b.t)) b.g=g;
+    applyFxLive(tr,S.selFx); drawEq(cv,fx); syncEqNums(fx); }
+  cv.addEventListener("pointermove",moveEq);
+  cv.addEventListener("pointerup",()=>dragB=-1);
+  cv.addEventListener("wheel",e=>{ const r=cv.getBoundingClientRect(); const x=e.clientX-r.left;
+    let best=1e9,bi=-1; fx.bands.forEach((b,i)=>{ const bx=Math.log10(b.f/20)/3*r.width; const d=Math.abs(bx-x); if(d<best){best=d;bi=i;} });
+    if(bi>=0){ e.preventDefault(); const b=fx.bands[bi]; b.q=clamp(b.q*(e.deltaY<0?1.15:0.87),0.1,18);
+      applyFxLive(tr,S.selFx); drawEq(cv,fx); syncEqNums(fx); } },{passive:false});
+}
+function syncEqNums(fx){ $$("[data-bf]").forEach(inp=>inp.value=Math.round(fx.bands[+inp.dataset.bf].f));
+  $$("[data-bg]").forEach(inp=>inp.value=fx.bands[+inp.dataset.bg].g.toFixed(1));
+  $$("[data-bq]").forEach(inp=>inp.value=fx.bands[+inp.dataset.bq].q.toFixed(2)); }
+function drawEq(cv,fx){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=cv.clientWidth, h=cv.clientHeight; if(!w) return;
+  cv.width=w*dpr; cv.height=h*dpr; const c=cv.getContext("2d"); c.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement);
+  c.fillStyle=cs.getPropertyValue("--bg"); c.fillRect(0,0,w,h);
+  c.strokeStyle=cs.getPropertyValue("--grid"); c.fillStyle=cs.getPropertyValue("--tx3"); c.font="10px sans-serif";
+  [50,100,200,500,1000,2000,5000,10000].forEach(f=>{ const x=Math.log10(f/20)/3*w;
+    c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke(); c.fillText(f>=1000?(f/1000)+"k":f,x+3,h-4); });
+  const y0=(18)/36*h; c.strokeStyle=cs.getPropertyValue("--gridbar");
+  c.beginPath();c.moveTo(0,y0);c.lineTo(w,y0);c.stroke();
+  /* response */
+  const N=140, fr=new Float32Array(N), mg=new Float32Array(N), ph=new Float32Array(N);
+  for(let i=0;i<N;i++) fr[i]=20*Math.pow(1000,i/(N-1));
+  const tot=new Float32Array(N);
+  const tmpCtx=S.ctx||null;
+  fx.bands.forEach(b=>{
+    if(!tmpCtx||!b.on){ if(b.on){ /* analytic fallback skipped */ } return; }
+    const node=tmpCtx.createBiquadFilter(); node.type=b.t; node.frequency.value=b.f; node.gain.value=b.g; node.Q.value=b.q;
+    node.getFrequencyResponse(fr,mg,ph);
+    for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mg[i]||1e-6);
+  });
+  c.beginPath();
+  for(let i=0;i<N;i++){ const x=i/(N-1)*w, y=(18-clamp(tot[i],-30,30))/36*h; i?c.lineTo(x,y):c.moveTo(x,y); }
+  c.strokeStyle="#f0823c"; c.lineWidth=2; c.stroke();
+  c.lineTo(w,h); c.lineTo(0,h); c.closePath(); c.fillStyle="rgba(240,130,60,.15)"; c.fill();
+  const cols=["#e2574c","#e3b341","#2fbfa5","#4c8de2","#b07fe2"];
+  fx.bands.forEach((b,i)=>{ const x=Math.log10(b.f/20)/3*w, y=(18-b.g)/36*h;
+    c.beginPath(); c.arc(x,y,9,0,7); c.fillStyle=b.on?cols[i]:"#666"; c.fill();
+    c.fillStyle="#fff"; c.font="bold 10px sans-serif"; c.textAlign="center"; c.fillText(String(i+1),x,y+3.5); c.textAlign="left"; });
+}
+
+/* ----- ミキサー ----- */
+function mixHTML(){
+  const strip=(tr)=>`<div class="strip ${tr.id===S.selTrack?"sel":""}" data-tid="${tr.id}">
+    <span class="dot" style="background:${tr.color}"></span><div class="nm">${esc(tr.name)}</div>
+    <div class="mini"><label>REVセンド <span>${Math.round(tr.sendRev*100)}%</span></label><input type="range" data-k="sendRev" min="0" max="100" value="${Math.round(tr.sendRev*100)}"></div>
+    <div class="mini"><label>DLYセンド <span>${Math.round(tr.sendDly*100)}%</span></label><input type="range" data-k="sendDly" min="0" max="100" value="${Math.round(tr.sendDly*100)}"></div>
+    <div class="mini"><label>PAN <span>${panLabel(tr.pan)}</span></label><input type="range" data-k="pan" min="-100" max="100" value="${Math.round(tr.pan*100)}"></div>
+    <input type="range" class="vfader" data-k="vol" min="-60" max="6" step="0.5" value="${tr.vol}">
+    <div class="small" style="font-family:var(--mono)">${fmtDb(tr.vol)}</div>
+    <div style="display:flex;gap:5px"><button class="msbtn m ${tr.mute?"on":""}" data-k="mute">M</button><button class="msbtn s ${tr.solo?"on":""}" data-k="solo">S</button></div>
+    <div class="small">${tr.bus?(esc((S.buses.find(b=>b.id===tr.bus)||{}).name||"")):"マスター"}</div></div>`;
+  const busStrip=b=>`<div class="strip ret"><div class="nm">BUS<br>${esc(b.name)}</div>
+    <input type="range" class="vfader" data-bus="${b.id}" min="-60" max="6" step="0.5" value="${b.vol}">
+    <div class="small" style="font-family:var(--mono)">${fmtDb(b.vol)}</div><div class="small">→ マスター</div></div>`;
+  const ret=`<div class="strip ret"><div class="nm">RETURN<br>リバーブ</div>
+    <div class="mini"><label>残響 <span>${(S.returns?S.returns.decay:2.6).toFixed(1)}秒</span></label><input type="range" data-ret="decay" min="0.4" max="6" step="0.1" value="${S.returns?S.returns.decay:2.6}"></div>
+    <div class="nm" style="margin-top:8px">RETURN<br>ディレイ</div>
+    <div class="mini"><label>時間 <span>${Math.round((S.returns?S.returns.dlyTime:0.375)*1000)}ms</span></label><input type="range" data-ret="dlyTime" min="0.03" max="1" step="0.005" value="${S.returns?S.returns.dlyTime:0.375}"></div>
+    <div class="mini"><label>反復 <span>${Math.round((S.returns?S.returns.dlyFb:0.34)*100)}%</span></label><input type="range" data-ret="dlyFb" min="0" max="0.85" step="0.01" value="${S.returns?S.returns.dlyFb:0.34}"></div></div>`;
+  return `<div class="mixer">${S.tracks.map(strip).join("")}${S.buses.map(busStrip).join("")}${ret}</div>
+  <p class="small">各トラック →（インサートFX → オートメーション → フェーダー）→ バス or マスター。リバーブ／ディレイはセンド量だけがリターンへ送られます。</p>`;
+}
+function wireMix(){
+  $$(".strip[data-tid]").forEach(st=>{
+    const tr=S.tracks.find(t=>t.id===st.dataset.tid); if(!tr) return;
+    st.addEventListener("click",e=>{ if(!e.target.closest("input,button")) selectTrack(tr.id); });
+    st.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{
+      const k=inp.dataset.k, v=parseFloat(inp.value);
+      if(k==="vol"){ tr.vol=v; st.querySelector(".small").textContent=fmtDb(v); if(tr.nodes)tr.nodes.fader.gain.setTargetAtTime(db2lin(v),S.ctx.currentTime,0.03); }
+      if(k==="pan"){ tr.pan=v/100; inp.previousElementSibling.querySelector("span").textContent=panLabel(tr.pan); if(tr.nodes)tr.nodes.pan.pan.setTargetAtTime(tr.pan,S.ctx.currentTime,0.03); }
+      if(k==="sendRev"){ tr.sendRev=v/100; inp.previousElementSibling.querySelector("span").textContent=v+"%"; if(tr.nodes)tr.nodes.sRev.gain.setTargetAtTime(tr.sendRev,S.ctx.currentTime,0.03); }
+      if(k==="sendDly"){ tr.sendDly=v/100; inp.previousElementSibling.querySelector("span").textContent=v+"%"; if(tr.nodes)tr.nodes.sDly.gain.setTargetAtTime(tr.sendDly,S.ctx.currentTime,0.03); }
+      renderTimelineSoft();
+    }));
+    st.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      if(b.dataset.k==="mute") tr.mute=!tr.mute; if(b.dataset.k==="solo") tr.solo=!tr.solo;
+      if(S.playing)startSources(currentPos()); renderTimeline(); renderInspector();
+    }));
+  });
+  $$("[data-bus]").forEach(inp=>inp.addEventListener("input",()=>{ const b=S.buses.find(x=>x.id===inp.dataset.bus);
+    b.vol=parseFloat(inp.value); if(b.nodes)b.nodes.g.gain.setTargetAtTime(db2lin(b.vol),S.ctx.currentTime,0.03); }));
+  $$("[data-ret]").forEach(inp=>inp.addEventListener("input",()=>{ if(!S.returns)return; const v=parseFloat(inp.value);
+    if(inp.dataset.ret==="decay"){ S.returns.decay=v; S.returns.conv.buffer=makeIR(S.ctx,v); }
+    if(inp.dataset.ret==="dlyTime"){ S.returns.dlyTime=v; S.returns.dly.delayTime.setTargetAtTime(v,S.ctx.currentTime,0.03); }
+    if(inp.dataset.ret==="dlyFb"){ S.returns.dlyFb=v; S.returns.fb.gain.setTargetAtTime(v,S.ctx.currentTime,0.03); } }));
+}
+function syncMixer(){ if(curTab==="mix") renderInspector(); }
+
+/* ----- 書き出し ----- */
+function expHTML(){
+  return `<div class="cols"><div class="sect" style="min-width:320px"><h3>WAV / MP3 書き出し（オフライン・レンダリング）</h3>
+  <div class="fld"><label>形式</label><select id="expFmt"><option value="wav">WAV（非圧縮）</option><option value="mp3">MP3（320kbps）</option></select></div>
+  <div class="fld"><label>サンプルレート</label><select id="expSr"><option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz</option></select></div>
+  <div class="fld"><label>ビット深度</label><select id="expBits"><option value="16">16 bit</option><option value="24" selected>24 bit</option></select><span class="small">WAVのみ</span></div>
+  <div class="fld"><label>ファイル名</label><input type="text" id="expName" value="utattemita_mix" style="width:180px"></div>
+  <div class="fld"><button id="btnDoExport" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700;padding:6px 18px">書き出す</button>
+  <span class="small" id="expStat">長さ ${fmtT(projectEnd())} / ${S.tracks.length} トラック（ミュート・ソロ状態が反映されます）</span></div>
+  <p class="small">プロジェクト全体をオフラインでレンダリングします。インサートFX・センド／リターン・バス・オートメーション・フェードすべてが反映されます。</p>
+  </div></div>`;
+}
+function wireExp(){ const b=$("#btnDoExport"); if(b) b.onclick=doExport;
+  const go=$("#btnExportGo"); }
+async function doExport(){
+  ensureCtx();
+  const fmt=$("#expFmt").value, sr=parseInt($("#expSr").value), bits=parseInt($("#expBits").value);
+  const name=($("#expName").value||"mix").replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g,"_");
+  const dur=projectEnd();
+  $("#expStat").textContent="レンダリング中…";
+  try{
+    const oc=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
+    const master=oc.createGain(); master.gain.value=db2lin(parseFloat($("#masterVol").value));
+    const mcomp=oc.createDynamicsCompressor(); mcomp.threshold.value=-3;mcomp.ratio.value=12;mcomp.attack.value=0.002;mcomp.release.value=0.18;
+    master.connect(mcomp); mcomp.connect(oc.destination);
+    const R=buildReturns(oc,master,false);
+    if(S.returns){ R.conv.buffer=makeIR(oc,S.returns.decay); R.dly.delayTime.value=S.returns.dlyTime; R.fb.gain.value=S.returns.dlyFb; }
+    const busNodes={};
+    S.buses.forEach(b=>{ const input=oc.createGain(),g=oc.createGain(),p=oc.createStereoPanner();
+      input.connect(g);g.connect(p);p.connect(master); g.gain.value=db2lin(b.vol); p.pan.value=b.pan; busNodes[b.id]=input; });
+    const anySolo=S.tracks.some(t=>t.solo);
+    S.tracks.forEach(tr=>{
+      const input=oc.createGain(); let prev=input;
+      tr.fx.forEach(fx=>{ const n=fxNodes(oc,fx); prev.connect(n.input); prev=n.output; });
+      const autoG=oc.createGain(), autoP=oc.createStereoPanner(), fader=oc.createGain(), pan=oc.createStereoPanner();
+      prev.connect(autoG); autoG.connect(autoP); autoP.connect(fader); fader.connect(pan);
+      pan.connect(tr.bus&&busNodes[tr.bus]?busNodes[tr.bus]:master);
+      const sR=oc.createGain(), sD=oc.createGain(); fader.connect(sR); sR.connect(R.revIn); fader.connect(sD); sD.connect(R.dlyIn);
+      fader.gain.value=db2lin(tr.vol); pan.pan.value=tr.pan; sR.gain.value=tr.sendRev; sD.gain.value=tr.sendDly;
+      if(tr.auto.volume.length){ autoG.gain.setValueAtTime(db2lin(autoVal(tr.auto.volume,0,tr.vol)),0);
+        tr.auto.volume.forEach(p=>autoG.gain.linearRampToValueAtTime(db2lin(p.v),p.t)); }
+      if(tr.auto.pan.length){ autoP.pan.setValueAtTime(autoVal(tr.auto.pan,0,0),0);
+        tr.auto.pan.forEach(p=>autoP.pan.linearRampToValueAtTime(p.v,p.t)); }
+      if(tr.mute||(anySolo&&!tr.solo)) return;
+      tr.clips.forEach(cl=>{ const src=oc.createBufferSource(); src.buffer=cl.buffer;
+        const g=oc.createGain(); src.connect(g); g.connect(input);
+        const cg=db2lin(cl.gain||0), t0=cl.start;
+        g.gain.setValueAtTime(cl.fadeIn>0?0.0001:cg,t0);
+        if(cl.fadeIn>0) g.gain.linearRampToValueAtTime(cg,t0+cl.fadeIn);
+        if(cl.fadeOut>0){ g.gain.setValueAtTime(cg,t0+cl.dur-cl.fadeOut); g.gain.linearRampToValueAtTime(0.0001,t0+cl.dur); }
+        src.start(t0,cl.offset,cl.dur); });
+    });
+    const buf=await oc.startRendering();
+    let blob, ext;
+    if(fmt==="wav"){ blob=encodeWav(buf,bits); ext="wav"; }
+    else { blob=encodeMp3(buf); ext="mp3"; if(!blob){ $("#expStat").textContent="MP3エンコーダを読み込めませんでした。WAVで書き出してください。"; return; } }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name+"."+ext; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    $("#expStat").textContent="書き出し完了: "+name+"."+ext+"（"+(blob.size/1024).toFixed(0)+" KB）";
+  }catch(err){ $("#expStat").textContent="書き出しに失敗しました: "+err.message; }
+}
+function encodeWav(buf,bits){
+  const nCh=2, sr=buf.sampleRate, len=buf.length, bytesPer=bits/8;
+  const block=nCh*bytesPer, dataLen=len*block;
+  const ab=new ArrayBuffer(44+dataLen), v=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF"); v.setUint32(4,36+dataLen,true); ws(8,"WAVEfmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,nCh,true); v.setUint32(24,sr,true);
+  v.setUint32(28,sr*block,true); v.setUint16(32,block,true); v.setUint16(34,bits,true);
+  ws(36,"data"); v.setUint32(40,dataLen,true);
+  const L=buf.getChannelData(0), R=buf.numberOfChannels>1?buf.getChannelData(1):L;
+  let o=44;
+  for(let i=0;i<len;i++){ for(const ch of [L,R]){ const s=clamp(ch[i],-1,1);
+    if(bits===16){ v.setInt16(o,Math.round(s*32767),true); o+=2; }
+    else { const val=Math.round(s*8388607); v.setUint8(o,val&255); v.setUint8(o+1,(val>>8)&255); v.setUint8(o+2,(val>>16)&255); o+=3; } } }
+  return new Blob([ab],{type:"audio/wav"});
+}
+function encodeMp3(buf){
+  if(typeof lamejs==="undefined"||!lamejs.Mp3Encoder) return null;
+  try{
+    const enc=new lamejs.Mp3Encoder(2,buf.sampleRate,320);
+    const L=buf.getChannelData(0), R=buf.numberOfChannels>1?buf.getChannelData(1):L;
+    const to16=d=>{ const o=new Int16Array(d.length); for(let i=0;i<d.length;i++)o[i]=Math.round(clamp(d[i],-1,1)*32767); return o; };
+    const l16=to16(L), r16=to16(R), parts=[]; const CH=1152;
+    for(let i=0;i<l16.length;i+=CH){ const d=enc.encodeBuffer(l16.subarray(i,i+CH),r16.subarray(i,i+CH)); if(d.length)parts.push(d); }
+    const end=enc.flush(); if(end.length)parts.push(end);
+    return new Blob(parts,{type:"audio/mpeg"});
+  }catch(e){ return null; }
+}
+
+/* ----- split / delete ----- */
+function splitSelected(){
+  const fc=findClip(S.selClip); if(!fc){ toast("分割するクリップを選んでください"); return; }
+  const {tr,cl}=fc, t=S.playing?currentPos():S.pos;
+  if(t<=cl.start+0.02||t>=cl.start+cl.dur-0.02){ toast("再生ヘッドがクリップの内側にある位置で分割してください"); return; }
+  const right={id:nid(),name:cl.name,buffer:cl.buffer,start:t,offset:cl.offset+(t-cl.start),dur:cl.start+cl.dur-t,
+    gain:cl.gain,fadeIn:0,fadeOut:cl.fadeOut};
+  cl.dur=t-cl.start; cl.fadeOut=0;
+  tr.clips.splice(tr.clips.indexOf(cl)+1,0,right); S.selClip=right.id;
+  renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos());
+  toast("クリップを分割しました");
+}
+function deleteSelected(){
+  const fc=findClip(S.selClip); if(!fc){ toast("削除するクリップを選んでください"); return; }
+  fc.tr.clips=fc.tr.clips.filter(c=>c.id!==fc.cl.id); S.selClip=null;
+  renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos());
+}
+
+/* ============================================================
+   配線・初期化
+   ============================================================ */
+$("#btnPlay").onclick=()=>play();
+$("#btnStop").onclick=()=>stopAll();
+$("#btnLoop").onclick=e=>{ S.loop.on=!S.loop.on; e.currentTarget.classList.toggle("on",S.loop.on);
+  if(S.loop.on&&(S.loop.end<=S.loop.start)){ S.loop.start=0; S.loop.end=Math.min(8,projectEnd()); }
+  drawRuler(); };
+$("#masterVol").addEventListener("input",e=>{ if(S.master)S.master.gain.setTargetAtTime(db2lin(parseFloat(e.target.value)),S.ctx.currentTime,0.03); });
+$("#bpmIn").addEventListener("change",e=>{ S.bpm=clamp(parseFloat(e.target.value)||120,40,240); e.target.value=S.bpm;
+  renderTimeline(); });
+$("#btnImport").onclick=()=>$("#fileIn").click();
+$("#btnImport2").onclick=()=>$("#fileIn").click();
+$("#btnCloseNote").onclick=()=>$("#emptyNote").hidden=true;
+$("#btnDemo").onclick=()=>buildDemoProject();
+$("#btnExportGo").onclick=()=>{ curTab="exp"; renderInspector(); $("#tlWrap").scrollIntoView(false); };
+$("#fileIn").addEventListener("change",e=>{ importFiles(e.target.files); e.target.value=""; });
+$("#btnAddTrack").onclick=()=>{ const type=$("#newTrackType").value;
+  const tr=newTrack(TYPES[type].label+" "+(S.tracks.filter(t=>t.type===type).length+1),type);
+  if(type!=="inst") tr.bus=S.buses[0].id;
+  S.tracks.push(tr); if(S.ctx)buildTrackGraph(tr); S.selTrack=tr.id; renderTimeline(); renderInspector(); };
+$("#btnSplit").onclick=splitSelected;
+$("#btnDelClip").onclick=deleteSelected;
+$("#btnSnap").onclick=e=>{ S.snap=!S.snap; e.currentTarget.classList.toggle("on",S.snap); };
+$("#autoSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+  S.autoMode=b.dataset.m; $$("#autoSeg button").forEach(x=>x.classList.toggle("on",x===b)); renderTimeline(); });
+$("#zoomR").addEventListener("input",e=>{ const wrap=$("#tlWrap"); const anchor=S.pos;
+  S.px=parseFloat(e.target.value); renderTimeline(); });
+["dragover","dragenter"].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); $("#dropVeil").classList.add("show"); }));
+["dragleave","drop"].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault();
+  if(ev==="dragleave"&&e.relatedTarget) return; $("#dropVeil").classList.remove("show"); }));
+document.addEventListener("drop",e=>{ if(e.dataTransfer.files&&e.dataTransfer.files.length) importFiles(e.dataTransfer.files); });
+document.addEventListener("pointerdown",()=>ensureCtx(),{once:true});
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,select,textarea")) return;
+  if(e.code==="Space"){ e.preventDefault(); play(); }
+  else if(e.key==="s"||e.key==="S") splitSelected();
+  else if(e.key==="Delete"||e.key==="Backspace") deleteSelected();
+  else if(e.key==="Home") seek(0);
+});
+window.addEventListener("resize",()=>{ renderTimeline(); });
+
+/* 初期化: デモ曲を自動生成 */
+renderTimeline(); renderInspector();
+buildDemoProject().then(()=>{ $("#emptyNote").hidden=false; });
+requestAnimationFrame(raf);
+
+/* ---------- playhead / meters loop ---------- */
+function updatePlayhead(){
+  const ph=$("#playhead"); const pos=S.playing?currentPos():S.pos;
+  ph.style.left=(pos*S.px)+"px"; ph.style.top="0"; ph.style.height="100%";
+  ph.parentElement.style.position="relative";
+  $("#timeBig").textContent=fmtT(pos);
+  const bt=pos/beatSec(); const bar=Math.floor(bt/4)+1, beat=Math.floor(bt%4)+1;
+  $("#timeBar").textContent=bar+"小節 "+beat+"拍";
+  $("#timeLen").textContent=fmtT(projectEnd());
+}
+function raf(){
+  requestAnimationFrame(raf);
+  if(S.playing){
+    let pos=currentPos();
+    if(S.loop.on&&pos>=S.loop.end){ seek(S.loop.start); pos=S.loop.start; }
+    if(pos>=projectEnd()){ pause(); S.pos=0; }
+    updatePlayhead();
+    /* auto-scroll follow */
+    const wrap=$("#tlWrap"), x=pos*S.px;
+    if(x>wrap.scrollLeft+wrap.clientWidth-260||x<wrap.scrollLeft-208) wrap.scrollLeft=Math.max(0,x-120);
+  }
+  if(S.analyser){
+    const a=new Uint8Array(S.analyser.frequencyBinCount); S.analyser.getByteTimeDomainData(a);
+    let mx=0; for(let i=0;i<a.length;i++){ const v=Math.abs(a[i]-128)/128; if(v>mx)mx=v; }
+    const pct=clamp(mx*130,0,100);
+    $("#mL").style.height=pct+"%"; $("#mR").style.height=clamp(pct*0.92,0,100)+"%";
+    /* GR meter */
+    const tr=selTrackObj();
+    if(tr&&tr.nodes&&S.selFx>=0&&tr.fx[S.selFx]&&tr.fx[S.selFx].type==="comp"){
+      const node=tr.nodes.liveFx[S.selFx]&&tr.nodes.liveFx[S.selFx].parts.comp;
+      const grEl=$("#grBar"); if(node&&grEl) grEl.style.width=clamp(-node.reduction*4,0,100)+"%";
+    }
+  }
+}
+</script>
+</body>
+</html>
