@@ -30,10 +30,10 @@
         }
       }
       *{box-sizing:border-box}
-      html,body{height:100%}
+      html{scrollbar-gutter:stable}
       body{margin:0;background:var(--bg);color:var(--tx);
         font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,-apple-system,"Segoe UI",sans-serif;
-        font-size:13px; overflow:hidden;}
+        font-size:13px;}
       button{font:inherit;color:var(--tx);background:var(--panel2);border:1px solid var(--line);border-radius:6px;
         padding:4px 10px;cursor:pointer;min-height:32px}
       button:hover{border-color:var(--tx3)}
@@ -45,11 +45,12 @@
       input[type=number]{width:76px;font-family:var(--mono)}
       input[type=range]{accent-color:var(--acc);min-height:24px}
       label{color:var(--tx2)}
-      .app{display:flex;flex-direction:column;height:100dvh}
+      .app{display:flex;flex-direction:column}
 
       /* ---------- transport ---------- */
       .transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-        padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--line)}
+        padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--line);
+        position:sticky;top:0;z-index:40}
       .transport .grp{display:flex;align-items:center;gap:6px}
       .tbtn{width:44px;height:40px;font-size:16px;display:grid;place-items:center;border-radius:8px}
       .tbtn.play{background:var(--acc);border-color:var(--acc);color:#fff;width:52px}
@@ -73,8 +74,8 @@
       .seg button.on{background:var(--blue);color:#fff}
 
       /* ---------- timeline ---------- */
-      .tlwrap{flex:1;min-height:180px;overflow:auto;position:relative;background:var(--lane)}
-      .tlgrid{display:grid;grid-template-columns:208px 1fr;min-height:100%}
+      .tlwrap{overflow-x:auto;position:relative;background:var(--lane);border-bottom:1px solid var(--line)}
+      .tlgrid{display:grid;grid-template-columns:208px 1fr}
       .heads{position:sticky;left:0;z-index:6;background:var(--bg2)}
       .head-spacer{height:30px;border-bottom:1px solid var(--line);background:var(--ruler);position:sticky;top:0;z-index:7;
         display:flex;align-items:center;padding:0 10px;color:var(--tx2);font-size:11px;gap:6px}
@@ -105,18 +106,21 @@
       .playhead{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--acc);z-index:4;pointer-events:none}
       .playhead::before{content:"";position:absolute;top:0;left:-7px;border:6px solid transparent;border-top:8px solid var(--acc)}
       .autocanvas{position:absolute;inset:0;z-index:3;cursor:crosshair}
-      .empty-note{position:absolute;inset:44px 24px auto 232px;max-width:560px;background:var(--panel);
-        border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);z-index:8}
-      .empty-note h2{margin:0 0 8px;font-size:16px}
-      .empty-note p{margin:6px 0;color:var(--tx2);line-height:1.65}
-      .empty-note .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+      .manual{max-width:760px;line-height:1.7;color:var(--tx2)}
+      .manual h2{margin:0 0 10px;font-size:16px;color:var(--tx)}
+      .manual h3{margin:18px 0 6px;font-size:13px;color:var(--tx)}
+      .manual h3:first-of-type{margin-top:4px}
+      .manual p{margin:6px 0}
+      .manual ol,.manual ul{margin:6px 0;padding-left:22px}
+      .manual li{margin:4px 0}
+      .manual .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
       /* ---------- inspector ---------- */
-      .insp{height:308px;flex:none;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column}
+      .insp{background:var(--panel);display:flex;flex-direction:column}
       .tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
       .tabs button{border:0;background:transparent;border-radius:8px 8px 0 0;padding:7px 14px;color:var(--tx2);min-height:36px}
       .tabs button.on{background:var(--bg2);color:var(--tx);font-weight:600;box-shadow:inset 0 -2px 0 var(--acc)}
-      .tabbody{flex:1;overflow:auto;padding:12px 14px}
+      .tabbody{padding:12px 14px 20px}
       .cols{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
       .sect{min-width:200px}
       .sect h3{margin:0 0 10px;font-size:12px;color:var(--tx2);letter-spacing:.06em;font-weight:700}
@@ -151,7 +155,7 @@
       .grmeter i{display:block;height:100%;background:var(--acc2);width:0%}
 
       /* mixer */
-      .mixer{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+      .mixer{display:flex;gap:10px;flex-wrap:wrap;padding-bottom:6px}
       .strip{width:128px;flex:none;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:9px 8px;
         display:flex;flex-direction:column;align-items:center;gap:6px}
       .strip.sel{border-color:var(--acc)}
@@ -164,16 +168,26 @@
       .dropveil{position:fixed;inset:0;background:rgba(20,30,60,.55);z-index:50;display:none;place-items:center;
         color:#fff;font-size:20px;font-weight:700;border:4px dashed var(--blue)}
       .dropveil.show{display:grid}
-      .toast{position:fixed;left:50%;bottom:330px;transform:translateX(-50%);background:var(--bg3);color:var(--tx);
+      .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bg3);color:var(--tx);
         border:1px solid var(--line);border-radius:9px;padding:9px 16px;box-shadow:var(--shadow);z-index:60;display:none;max-width:88vw;pointer-events:none}
+      .confirmveil{position:fixed;inset:0;background:rgba(10,12,18,.62);z-index:70;display:grid;place-items:center;padding:16px}
+      .confirmveil[hidden]{display:none}
+      .confirmbox{max-width:480px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+      .confirmbox h2{margin:0 0 8px;font-size:16px}
+      .confirmbox p{margin:6px 0;color:var(--tx2);line-height:1.65}
+      .confirmbox .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-end}
+      /* pitch editor */
+      .pitchwrap{max-width:1020px}
+      .pitchwrap h3{margin:0 0 8px;font-size:13px}
+      .pitchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+      #pitchCanvas{width:100%;height:280px;display:block;background:var(--bg);border:1px solid var(--line2);border-radius:8px;touch-action:none}
+      .pitchinfo{font-family:var(--mono);font-size:12px;color:var(--tx)}
       @media (max-width:760px){
         .tlgrid{grid-template-columns:132px 1fr}
         .thead{height:84px;padding:6px}
         .lane{height:84px}
         .clip{height:68px}
-        .insp{height:46dvh}
         .timebox{min-width:150px}
-        .empty-note{left:148px;right:12px}
         .thead .volVal{display:none}
         .thead .panVal{display:none}
         .toast{bottom:auto;top:70px}
@@ -205,7 +219,7 @@
         <div class="spacer"></div>
         <div class="grp">
           <button id="btnImport">＋ 音声を読み込む</button>
-          <button id="btnDemo">デモ曲を読み直す</button>
+          <button id="btnDemo">デモ曲を読み込む</button>
           <button id="btnExportGo" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700">書き出し</button>
         </div>
       </div>
@@ -238,7 +252,7 @@
           <label for="zoomR">ズーム</label>
           <input type="range" id="zoomR" min="8" max="140" step="1" value="42" style="width:110px">
         </div>
-        <span class="small">クリップはドラッグで移動、両端ドラッグでトリム。Melodyne等で補正済みのWAVもそのままドロップできます。</span>
+        <span class="small">クリップはドラッグで移動、両端ドラッグでトリム。ピッチ補正は「ピッチ補正」タブで、Melodyne等で補正済みのWAVもそのまま使えます。</span>
       </div>
 
       <!-- timeline -->
@@ -252,12 +266,6 @@
             <div class="playhead" id="playhead"></div>
           </div>
         </div>
-        <div class="empty-note" id="emptyNote" hidden>
-          <h2>まずは音源を読み込もう</h2>
-          <p>カラオケ音源（オケ）と歌声のWAV / MP3 を、この画面へドラッグ＆ドロップするか「音声を読み込む」から追加してください。ピッチ・タイミング補正は外部ツール（Melodyne / VariAudio等）で済ませたWAVを読み込む運用が前提です。</p>
-          <p>すぐに試したい場合はデモ曲（オケ＋ボーカル＋ハモリの3トラック、シンセ生成）が読み込まれています。そのまま再生して、EQ・コンプ・センドリバーブやオートメーションを触ってみてください。</p>
-          <div class="row"><button id="btnImport2">音声ファイルを選ぶ</button><button id="btnCloseNote" class="ghost">閉じる</button></div>
-        </div>
       </div>
 
       <!-- inspector -->
@@ -265,8 +273,10 @@
         <div class="tabs" id="tabs">
           <button data-t="ch" class="on">チャンネル / クリップ</button>
           <button data-t="fx">エフェクト</button>
+          <button data-t="pitch">ピッチ補正</button>
           <button data-t="mix">ミキサー</button>
           <button data-t="exp">書き出し</button>
+          <button data-t="manual">取扱説明書</button>
         </div>
         <div class="tabbody" id="tabBody"></div>
       </div>
@@ -275,6 +285,13 @@
     <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac" multiple hidden>
     <div class="dropveil" id="dropVeil">ここに音声ファイルをドロップ</div>
     <div class="toast" id="toast"></div>
+    <div class="confirmveil" id="demoConfirm" hidden>
+      <div class="confirmbox" role="dialog" aria-modal="true" aria-labelledby="demoConfirmTitle">
+        <h2 id="demoConfirmTitle">デモ曲を読み込みますか？</h2>
+        <p>今あるトラックはすべてデモ曲（オケ＋ボーカル＋ハモリ）に入れ替わります。自分の音源で作業中の場合は、先に書き出してから読み込んでください。</p>
+        <div class="row"><button id="btnDemoCancel" class="ghost">キャンセル</button><button id="btnDemoOk" style="background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700">入れ替えて読み込む</button></div>
+      </div>
+    </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 <script>
@@ -482,7 +499,7 @@ function startSources(fromPos){
     tr.clips.forEach(cl=>{
       const cEnd=cl.start+cl.dur;
       if(cEnd<=fromPos) return;
-      const src=ctx.createBufferSource(); src.buffer=cl.buffer;
+      const src=ctx.createBufferSource(); src.buffer=clipBuffer(cl);
       const g=ctx.createGain(); src.connect(g); g.connect(tr.nodes.input);
       const skip=Math.max(0,fromPos-cl.start);
       const when=now+Math.max(0,cl.start-fromPos);
@@ -611,6 +628,7 @@ async function buildDemoProject(){
   tH.clips.push({id:nid(),name:"ハモリ",buffer:harmBuf,start:0,offset:0,dur:harmBuf.duration,gain:0,fadeIn:0.02,fadeOut:0.05});
   S.tracks=[tI,tV,tH]; S.selTrack=tV.id; S.selFx=0; S.pos=0; S.demoLoaded=true;
   if(S.ctx) S.tracks.forEach(buildTrackGraph);
+  const _dc=$("#demoConfirm"); if(_dc) _dc.hidden=true;
   renderTimeline(); renderInspector(); updatePlayhead();
   toast("デモ曲を読み込みました。再生ボタンで試聴できます");
 }
@@ -634,7 +652,6 @@ async function importFiles(files){
       toast("読み込み: "+f.name);
     }catch(e){ toast("読み込めませんでした: "+f.name); }
   }
-  $("#emptyNote").hidden=true;
   renderTimeline(); renderInspector();
 }
 
@@ -841,6 +858,8 @@ function renderInspector(){
   if(curTab==="ch") body.innerHTML=chHTML(), wireCh();
   else if(curTab==="fx") body.innerHTML=fxHTML(), wireFx();
   else if(curTab==="mix") body.innerHTML=mixHTML(), wireMix();
+  else if(curTab==="pitch") body.innerHTML=pitchHTML(), wirePitch();
+  else if(curTab==="manual") body.innerHTML=manualHTML(), wireManual();
   else body.innerHTML=expHTML(), wireExp();
 }
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
@@ -1140,6 +1159,47 @@ function expHTML(){
 }
 function wireExp(){ const b=$("#btnDoExport"); if(b) b.onclick=doExport;
   const go=$("#btnExportGo"); }
+
+/* ----- 取扱説明書 ----- */
+function manualHTML(){
+  return `<div class="manual">
+  <h2>取扱説明書</h2>
+  <h3>まずは音源を読み込もう</h3>
+  <p>カラオケ音源（オケ）と歌声のWAV / MP3 を、この画面へドラッグ＆ドロップするか「音声を読み込む」から追加してください。ピッチ補正は内蔵の「ピッチ補正」タブでも、外部ツール（Melodyne / VariAudio等）で補正済みのWAVを読み込んでも行えます。</p>
+  <div class="row"><button id="btnManualImport">音声ファイルを選ぶ</button></div>
+  <h3>デモ曲を手動で読み込む</h3>
+  <p>デモ曲は自動では読み込まれません。試したいときだけ、次の手順で読み込んでください。</p>
+  <ol>
+    <li>画面上部の「デモ曲を読み込む」を押します（この説明書の下のボタンでも同じです）。</li>
+    <li>生成が終わるまで少し待つと、オケ＋ボーカル＋ハモリの3トラック（シンセ生成）がタイムラインに入ります。</li>
+    <li>そのまま再生ボタンで試聴して、EQ・コンプ・センドリバーブやオートメーションを触ってみてください。</li>
+  </ol>
+  <p>すでにトラックがある状態で読み込むと、今のトラックはデモ曲に入れ替わります。読み込み前に確認画面が出るので、自分の音源で作業中の場合は先に「書き出し」タブから書き出してください。</p>
+  <div class="row"><button id="btnManualDemo">デモ曲を読み込む</button></div>
+  <h3>ピッチ補正（VariAudio風・単音ボーカル向け）</h3>
+  <ol>
+    <li>タイムラインでボーカルのクリップを選び、「ピッチ補正」タブを開きます。</li>
+    <li>「ピッチ解析」を押すと、音程を検出してノート（ブロック）として表示します。</li>
+    <li>ブロックを上下にドラッグすると半音単位で補正できます。「最寄りの音にスナップ」で全ノートを最も近い音程へ寄せることもできます。</li>
+    <li>補正は即座に再生と書き出しへ反映されます。対象は単音の歌声です（和音や重なった音源、タイミングの伸縮は対象外）。</li>
+  </ol>
+  <h3>基本操作</h3>
+  <ul>
+    <li>クリップはドラッグで移動、両端ドラッグでトリムできます。分割はクリップを選んで <span class="kbd">S</span>、削除は <span class="kbd">Del</span> です。</li>
+    <li>「エフェクト」タブでEQ・コンプ・リバーブ・ディレイをトラックごとに調整でき、接続順も並び替えできます。</li>
+    <li>ツールバーのオートメーションを切り替えると、選択中トラックのボリューム／パンをタイムライン上で描けます（クリックで点を追加、右クリックで削除）。</li>
+    <li>仕上がったら「書き出し」タブからWAV / MP3で書き出せます（48kHz / 24bitも選択可）。</li>
+  </ul>
+  </div>`;
+}
+function wireManual(){
+  const bi=$("#btnManualImport"); if(bi) bi.onclick=()=>$("#fileIn").click();
+  const bd=$("#btnManualDemo"); if(bd) bd.onclick=()=>requestDemoLoad();
+}
+function requestDemoLoad(){
+  if(!S.tracks.length){ buildDemoProject(); return; }
+  const dc=$("#demoConfirm"); if(dc) dc.hidden=false;
+}
 async function doExport(){
   ensureCtx();
   const fmt=$("#expFmt").value, sr=parseInt($("#expSr").value), bits=parseInt($("#expBits").value);
@@ -1170,7 +1230,7 @@ async function doExport(){
       if(tr.auto.pan.length){ autoP.pan.setValueAtTime(autoVal(tr.auto.pan,0,0),0);
         tr.auto.pan.forEach(p=>autoP.pan.linearRampToValueAtTime(p.v,p.t)); }
       if(tr.mute||(anySolo&&!tr.solo)) return;
-      tr.clips.forEach(cl=>{ const src=oc.createBufferSource(); src.buffer=cl.buffer;
+      tr.clips.forEach(cl=>{ const src=oc.createBufferSource(); src.buffer=clipBuffer(cl);
         const g=oc.createGain(); src.connect(g); g.connect(input);
         const cg=db2lin(cl.gain||0), t0=cl.start;
         g.gain.setValueAtTime(cl.fadeIn>0?0.0001:cg,t0);
@@ -1216,6 +1276,327 @@ function encodeMp3(buf){
   }catch(e){ return null; }
 }
 
+/* ============================================================
+   ピッチ補正（VariAudio風・単音ボーカル向けの最小構成）
+   ------------------------------------------------------------
+   構造: 検出 PitchDetect / ノート分割 NoteSegment / 適用 PitchShift を
+   独立したモジュール境界に分け、差し替え可能にしてある（将来のML検出や
+   高品質シフトへの交換はこの境界で行う）。UIはクリップの pitch データ
+   だけに依存し、処理本体とは混ぜない。
+
+   clip.pitch = { version:1, notes:[Note,...] }
+   Note = { id, start, end, f0, midi, shift }
+     start/end : 元バッファ内の時刻（秒）。トリム・分割しても座標は不変
+     f0 / midi : 検出値（midi は小数。例 60.25 = C4 +25セント）
+     shift     : 補正量（半音・小数可）。ドラッグ操作は半音単位で加減し、
+                 スナップは最寄りの整数 midi へ寄せるため小数になり得る
+   ※将来の拡張（セント微調整 / ビブラート / タイミング等）は Note への
+     フィールド追加で足す想定。今は未実装（MVP外）。
+   補正結果は clip.corrBuffer（元と同長の AudioBuffer）にキャッシュし、
+   再生・書き出しは clipBuffer() 経由でそれを使う。
+   ============================================================ */
+function clipBuffer(cl){ return (cl.pitchOn!==false&&cl.corrBuffer)?cl.corrBuffer:cl.buffer; }
+const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function midiName(m){ const r=Math.round(m); return NOTE_NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1); }
+function fmtCents(m){ const c=Math.round((m-Math.round(m))*100); return (c>0?"+":"")+c+"¢"; }
+function fmtShift(s){ if(Math.abs(s)<1e-4) return "±0"; const r=Math.round(s*100)/100; return (r>0?"+":"")+r+" 半音"; }
+
+/* ---------- (1) ピッチ検出: YIN（自己相関系） ---------- */
+const PitchDetect={
+  /* 戻り値: [{t, f0, voiced}]（t は元バッファ時刻・秒）。重いMLは使わない */
+  async analyze(buffer,onProgress){
+    const sr0=buffer.sampleRate;
+    const ch0=buffer.getChannelData(0), ch1=buffer.numberOfChannels>1?buffer.getChannelData(1):null;
+    const targetSr=16000, dec=Math.max(1,Math.round(sr0/targetSr)), sr=sr0/dec;
+    const n=Math.floor(ch0.length/dec), data=new Float32Array(n);
+    for(let i=0;i<n;i++){ const j=i*dec; data[i]=ch1?(ch0[j]+ch1[j])*0.5:ch0[j]; }
+    const W=1024, hop=256, minF=60, maxF=1000;
+    const tauMin=Math.max(2,Math.floor(sr/maxF)), tauMax=Math.min(Math.ceil(sr/minF),W-2);
+    const frames=[], total=Math.max(1,Math.floor((n-W)/hop));
+    for(let fi=0,start=0; start+W<=n; fi++,start+=hop){
+      frames.push(this._frame(data.subarray(start,start+W),sr,tauMin,tauMax,start/sr));
+      if(onProgress&&fi%40===0){ onProgress(Math.min(1,fi/total)); await new Promise(r=>setTimeout(r,0)); }
+    }
+    if(onProgress) onProgress(1);
+    return frames;
+  },
+  _frame(d,sr,tauMin,tauMax,t){
+    let rms=0; for(let i=0;i<d.length;i++) rms+=d[i]*d[i];
+    if(Math.sqrt(rms/d.length)<0.008) return {t,f0:0,voiced:false};
+    const W=d.length, df=new Float32Array(tauMax+2), cmnd=new Float32Array(tauMax+2);
+    for(let tau=tauMin;tau<=tauMax;tau++){ let s=0; const lim=W-tau;
+      for(let i=0;i<lim;i++){ const dd=d[i]-d[i+tau]; s+=dd*dd; } df[tau]=s; }
+    cmnd[0]=1; let run=0;
+    for(let tau=1;tau<=tauMax;tau++){ run+=df[tau]; cmnd[tau]=run>0?df[tau]*tau/run:1; }
+    let tau=-1; const TH=0.15;
+    for(let x=Math.max(2,tauMin);x<=tauMax;x++){
+      if(cmnd[x]<TH){ while(x+1<=tauMax&&cmnd[x+1]<cmnd[x]) x++; tau=x; break; } }
+    if(tau<0){ let m=Infinity; for(let x=tauMin;x<=tauMax;x++){ if(cmnd[x]<m){m=cmnd[x];tau=x;} }
+      if(m>0.4) return {t,f0:0,voiced:false}; }
+    let sh=0;
+    if(tau>tauMin&&tau<tauMax){ const a=cmnd[tau-1],b=cmnd[tau],c=cmnd[tau+1],den=a-2*b+c;
+      if(Math.abs(den)>1e-9) sh=0.5*(a-c)/den; }
+    const f0=sr/(tau+sh);
+    if(f0<50||f0>1100) return {t,f0:0,voiced:false};
+    return {t,f0,voiced:true};
+  }
+};
+
+/* ---------- (2) ノート分割: フレーム列 → 音符ブロック ---------- */
+const NoteSegment={
+  segment(frames){
+    const hopDur=frames.length>1?frames[1].t-frames[0].t:0.016;
+    const med=a=>{ const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
+    const notes=[]; let cur=null, dev=null, gap=0;
+    const flush=()=>{ if(cur&&cur.midis.length){ const m=med(cur.midis);
+        notes.push({id:nid(),start:cur.start,end:cur.end,f0:440*Math.pow(2,(m-69)/12),midi:m,shift:0}); }
+      cur=null; dev=null; };
+    frames.forEach(fr=>{
+      if(!fr.voiced){ gap++; if(gap>3){ flush(); gap=0; } return; }
+      gap=0;
+      const m=69+12*Math.log2(fr.f0/440);
+      if(!cur){ cur={start:fr.t,end:fr.t+hopDur,midis:[m]}; return; }
+      if(Math.abs(m-med(cur.midis))<=0.9){ cur.midis.push(m); cur.end=fr.t+hopDur; dev=null; }
+      else{
+        if(!dev) dev={start:fr.t,midis:[m]};
+        else if(Math.abs(m-med(dev.midis))<=0.9) dev.midis.push(m);
+        else dev={start:fr.t,midis:[m]};
+        if(dev.midis.length>=3){ const dn=dev; flush(); cur={start:dn.start,end:fr.t+hopDur,midis:dn.midis}; }
+      }
+    });
+    flush();
+    /* 60ms未満の断片は直前のノートへ吸収 */
+    const out=[];
+    notes.forEach(nt=>{ if(nt.end-nt.start<0.06&&out.length) out[out.length-1].end=nt.end; else out.push(nt); });
+    return out;
+  }
+};
+
+/* ---------- (3) ピッチシフト適用: オフラインで補正バッファを生成 ---------- */
+const PitchShift={
+  /* notes の shift を適用した新しい AudioBuffer（元と同長・同ch数）を返す */
+  render(ctx,buffer,notes){
+    const sr=buffer.sampleRate, out=ctx.createBuffer(buffer.numberOfChannels,buffer.length,sr);
+    const active=notes.filter(n=>Math.abs(n.shift)>1e-4);
+    for(let ch=0;ch<buffer.numberOfChannels;ch++){
+      const src=buffer.getChannelData(ch), dst=out.getChannelData(ch);
+      dst.set(src);
+      active.forEach(nt=>{
+        const ratio=Math.pow(2,nt.shift/12), pad=0.03;
+        const s0=Math.max(0,Math.floor((nt.start-pad)*sr)), s1=Math.min(src.length,Math.ceil((nt.end+pad)*sr));
+        if(s1-s0<256) return;
+        const shifted=this._shift(src.subarray(s0,s1),ratio,sr/nt.f0);
+        const fade=Math.min(Math.floor(pad*sr),Math.floor(shifted.length/2));
+        for(let i=0;i<shifted.length;i++){
+          let g=1;
+          if(i<fade) g=i/fade; else if(i>shifted.length-1-fade) g=(shifted.length-1-i)/fade;
+          dst[s0+i]=src[s0+i]*(1-g)+shifted[i]*g;
+        }
+      });
+    }
+    return out;
+  },
+  _shift(x,ratio,period){
+    /* 本命は PSOLA（下記）。周期が取れない／短すぎる断片だけ
+       リサンプル＋OLA のフォールバックで処理する */
+    if(period&&period>=8&&x.length>=4*period){
+      /* ratio が 1/整数（特に 0.5）に近いとグレイン配置が恒等写像化して
+         音程が変わらない退化が起きるため、大きな下降は sqrt 分解で2段に分ける */
+      if(ratio<0.62){ const s=Math.sqrt(ratio);
+        return this._psola(this._psola(x,s,period),s,period/s); }
+      return this._psola(x,ratio,period);
+    }
+    const n=Math.max(16,Math.floor(x.length/ratio)), rs=new Float32Array(n);
+    for(let i=0;i<n;i++){ const p=i*ratio, i0=Math.floor(p), f=p-i0;
+      rs[i]=x[i0]*(1-f)+x[Math.min(i0+1,x.length-1)]*f; }
+    return this._stretch(rs,x.length);
+  },
+  _psola(x,ratio,P){
+    /* PSOLA: 周期同期グレイン（長さ約2.5周期）を入力では周期間隔で切り出し、
+       出力では P/ratio 間隔で並べる。ratio>1 ではグレインが繰り返され、
+       ratio<1 では間引かれるため、長さを保ったまま音程だけが変わる。
+       グレイン中心はすべて同じ位相（周期の倍数位置）に揃うので、
+       定常な歌声でも音程が元へ引き戻される位相ドリフトが起きない */
+    const half=Math.max(8,Math.round(1.25*P)), W=half*2;
+    const win=new Float32Array(W);
+    for(let i=0;i<W;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(W-1));
+    const out=new Float32Array(x.length+W), wsum=new Float32Array(x.length+W);
+    const synHop=P/ratio, nIn=Math.max(1,Math.floor(x.length/P));
+    let j=0;
+    for(let sp=0; sp<x.length; sp+=synHop, j++){
+      const c=Math.round(Math.min(nIn,Math.round(j/ratio))*P); /* 入力グレイン中心 */
+      const oC=Math.round(sp);                                  /* 出力グレイン中心 */
+      for(let i=0;i<W;i++){
+        const si=c-half+i, oi=oC-half+i;
+        if(si<0||si>=x.length||oi<0||oi>=out.length) continue;
+        out[oi]+=x[si]*win[i]; wsum[oi]+=win[i];
+      }
+    }
+    const y=new Float32Array(x.length);
+    for(let i=0;i<x.length;i++) y[i]=wsum[i]>0.25?out[i]/wsum[i]:out[i];
+    return y;
+  },
+  _stretch(x,target){
+    /* フォールバック用 OLA タイムストレッチ（周期不明の断片向け） */
+    if(x.length===target) return Float32Array.from(x);
+    const factor=target/x.length, W=1024, Hs=256, Ha=Hs/factor;
+    const out=new Float32Array(target+W), wsum=new Float32Array(target+W);
+    const win=new Float32Array(W);
+    for(let i=0;i<W;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(W-1));
+    let ap=0, sp=0;
+    while(sp<target){
+      const a0=Math.min(Math.round(ap),Math.max(0,x.length-W));
+      for(let i=0;i<W&&a0+i<x.length;i++){ out[sp+i]+=x[a0+i]*win[i]; wsum[sp+i]+=win[i]; }
+      ap+=Ha; sp+=Hs;
+    }
+    const y=new Float32Array(target);
+    for(let i=0;i<target;i++) y[i]=wsum[i]>0.25?out[i]/wsum[i]:out[i];
+    return y;
+  }
+};
+
+/* ---------- 補正の再レンダリング（UIと処理の橋渡し） ---------- */
+function refreshPitchRender(cl){
+  if(!cl.pitch||cl.pitchOn===false||!cl.pitch.notes.some(n=>Math.abs(n.shift)>1e-4)) cl.corrBuffer=null;
+  else{ ensureCtx(); cl.corrBuffer=PitchShift.render(S.ctx,cl.buffer,cl.pitch.notes); }
+  if(S.playing) startSources(currentPos());
+  const st=$("#pitchStatus"); if(st) st.textContent=pitchStatusText(cl);
+}
+function pitchStatusText(cl){
+  if(!cl.pitch) return "未解析です";
+  const c=cl.pitch.notes.filter(n=>Math.abs(n.shift)>1e-4).length;
+  return cl.pitch.notes.length+" ノート検出 / "+c+" ノート補正中"+(cl.pitchOn===false?"（補正OFF）":"");
+}
+
+/* ----- ピッチ補正タブ（UIは clip.pitch データだけを見る） ----- */
+let pitchSelNote=null;
+function pitchHTML(){
+  const fc=findClip(S.selClip);
+  if(!fc) return `<div class="pitchwrap"><h3>ピッチ補正（VariAudio風）</h3>
+    <p class="small">タイムラインでクリップを選んでから開いてください。単音のボーカル／ハモリ向けです（和音・重なった音源は対象外）。</p></div>`;
+  const {tr,cl}=fc;
+  let h=`<div class="pitchwrap"><h3>ピッチ補正 — ${esc(tr.name)} / ${esc(cl.name)}</h3>`;
+  if(tr.type==="inst") h+=`<p class="small">このクリップはオケ／楽器トラックです。ピッチ補正は単音ボーカル向けの機能です。</p>`;
+  h+=`<div class="pitchbar">
+    <button id="btnAnalyze">${cl.pitch?"再解析":"ピッチ解析"}</button>
+    <span class="pitchinfo" id="pitchStatus">${pitchStatusText(cl)}</span></div>`;
+  if(cl.pitch&&cl.pitch.notes.length){
+    h+=`<div class="pitchbar">
+      <button id="btnSnapNotes">最寄りの音にスナップ</button>
+      <button id="btnPitchReset">補正をリセット</button>
+      <button id="btnPitchOn">${cl.pitchOn===false?"補正をONにする":"補正をOFFにする"}</button>
+      <span class="pitchinfo" id="pitchInfo">ブロックをクリックで選択、上下ドラッグで半音単位に補正できます</span>
+      <button id="btnNoteDown" title="選択ノートを半音下げる">− 半音</button>
+      <button id="btnNoteUp" title="選択ノートを半音上げる">＋ 半音</button>
+    </div>
+    <canvas id="pitchCanvas"></canvas>
+    <p class="small">破線＝検出位置、実ブロック＝補正後の位置。補正は再生と書き出しにそのまま反映されます。解析後にクリップを分割／トリムしても補正は引き継がれます。</p>`;
+  } else if(cl.pitch){
+    h+=`<p class="small">有声音のノートは検出されませんでした。音量が小さい、または単音でない可能性があります。</p>`;
+  } else {
+    h+=`<p class="small">「ピッチ解析」を押すと、YIN法で音程を検出してノート（ブロック）として表示します。ブロックを上下にドラッグすると半音単位で補正でき、「最寄りの音にスナップ」で全ノートを最も近い音程へ寄せることもできます。補正はオフラインで適用され、再生と書き出しに反映されます。</p>`;
+  }
+  return h+"</div>";
+}
+function pitchNoteInfo(cl){
+  const nt=cl.pitch&&cl.pitch.notes.find(n=>n.id===pitchSelNote);
+  if(!nt) return "ブロックをクリックで選択、上下ドラッグで半音単位に補正できます";
+  const tgt=nt.midi+nt.shift;
+  return "選択中: 検出 "+midiName(nt.midi)+"（"+nt.f0.toFixed(1)+" Hz / "+fmtCents(nt.midi)+"） → 補正後 "+midiName(tgt)+"（"+fmtShift(nt.shift)+"）";
+}
+function updatePitchInfo(cl){ const el=$("#pitchInfo"); if(el) el.textContent=pitchNoteInfo(cl); }
+function drawPitch(cv,cl){
+  if(!cl.pitch||!cl.pitch.notes.length) return;
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=cv.clientWidth, hgt=cv.clientHeight; if(!w) return;
+  cv.width=w*dpr; cv.height=hgt*dpr;
+  const c=cv.getContext("2d"); c.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement);
+  const notes=cl.pitch.notes;
+  let mn=Infinity, mx=-Infinity;
+  notes.forEach(n=>{ mn=Math.min(mn,n.midi+Math.min(0,n.shift)); mx=Math.max(mx,n.midi+Math.max(0,n.shift)); });
+  mn=Math.floor(mn)-1; mx=Math.ceil(mx)+1;
+  const gut=40, rows=mx-mn+1, rh=(hgt-10)/rows;
+  const t0=cl.offset, t1=cl.offset+cl.dur;
+  const X=t=>gut+(t-t0)/Math.max(1e-6,t1-t0)*(w-gut-8);
+  const Y=m=>5+(mx-m+0.5)*rh;
+  cv._geom={rh,t0,t1,X,Y};
+  c.font="9px sans-serif"; c.textBaseline="middle";
+  for(let m=mn;m<=mx;m++){
+    const y=Y(m), black=[1,3,6,8,10].includes(((m%12)+12)%12);
+    c.fillStyle=black?"rgba(127,140,180,.13)":"rgba(127,140,180,.04)";
+    c.fillRect(gut,y-rh/2,w-gut,y+rh/2);
+    c.strokeStyle=cs.getPropertyValue("--grid"); c.beginPath(); c.moveTo(gut,y+rh/2); c.lineTo(w,y+rh/2); c.stroke();
+    c.fillStyle=cs.getPropertyValue("--tx3"); c.fillText(midiName(m),6,y);
+  }
+  const rr=(x,y,ww,hh,r)=>{ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+ww,y,x+ww,y+hh,r); c.arcTo(x+ww,y+hh,x,y+hh,r); c.arcTo(x,y+hh,x,y,r); c.arcTo(x,y,x+ww,y,r); c.closePath(); };
+  notes.forEach(n=>{
+    const bx=X(n.start), bw=Math.max(6,X(n.end)-bx), bh=Math.max(6,rh*0.72);
+    /* 検出位置（破線） */
+    c.setLineDash([4,3]); c.strokeStyle="rgba(255,255,255,.55)"; c.lineWidth=1;
+    c.strokeRect(bx,Y(n.midi)-bh/2,bw,bh); c.setLineDash([]);
+    /* 補正後ブロック */
+    const by=Y(n.midi+n.shift)-bh/2, shifted=Math.abs(n.shift)>1e-4, sel=n.id===pitchSelNote;
+    c.fillStyle=cl.pitchOn===false?"rgba(140,148,168,.5)":(shifted?"rgba(240,130,60,.88)":"rgba(76,141,226,.75)");
+    rr(bx,by,bw,bh,4); c.fill();
+    if(sel){ c.strokeStyle="#fff"; c.lineWidth=2; rr(bx,by,bw,bh,4); c.stroke(); }
+    if(bw>44){ c.fillStyle="#fff"; c.font="bold 10px sans-serif";
+      c.fillText(midiName(n.midi+n.shift)+(shifted?" "+fmtShift(n.shift):""),bx+5,Y(n.midi+n.shift)); c.font="9px sans-serif"; }
+  });
+}
+function wirePitch(){
+  const fc=findClip(S.selClip); if(!fc) return;
+  const {cl}=fc;
+  const cv=$("#pitchCanvas");
+  if(cv) requestAnimationFrame(()=>drawPitch(cv,cl));
+  const an=$("#btnAnalyze");
+  if(an) an.onclick=async()=>{
+    ensureCtx(); an.disabled=true;
+    const st=$("#pitchStatus"); if(st) st.textContent="解析中… 0%";
+    try{
+      const frames=await PitchDetect.analyze(cl.buffer,p=>{ if(st) st.textContent="解析中… "+Math.round(p*100)+"%"; });
+      cl.pitch={version:1,notes:NoteSegment.segment(frames)};
+      cl.pitchOn=true; cl.corrBuffer=null; pitchSelNote=null;
+      toast("ピッチ解析が完了しました（"+cl.pitch.notes.length+" ノート）");
+    }catch(err){ toast("ピッチ解析に失敗しました: "+err.message); }
+    if(curTab==="pitch") renderInspector();
+  };
+  const snap=$("#btnSnapNotes");
+  if(snap) snap.onclick=()=>{ cl.pitch.notes.forEach(n=>{ n.shift=Math.round((Math.round(n.midi)-n.midi)*1000)/1000; });
+    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("全ノートを最寄りの音程へ寄せました"); };
+  const rst=$("#btnPitchReset");
+  if(rst) rst.onclick=()=>{ cl.pitch.notes.forEach(n=>n.shift=0);
+    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); toast("ピッチ補正をリセットしました"); };
+  const onb=$("#btnPitchOn");
+  if(onb) onb.onclick=()=>{ cl.pitchOn=cl.pitchOn===false?true:false; refreshPitchRender(cl); renderInspector(); };
+  const stepBtn=(id,d)=>{ const b=$(id); if(b) b.onclick=()=>{ const nt=cl.pitch&&cl.pitch.notes.find(n=>n.id===pitchSelNote);
+    if(!nt){ toast("先にノートを選んでください"); return; }
+    nt.shift=clamp(Math.round((nt.shift+d)*100)/100,-12,12);
+    refreshPitchRender(cl); if(cv)drawPitch(cv,cl); updatePitchInfo(cl); }; };
+  stepBtn("#btnNoteDown",-1); stepBtn("#btnNoteUp",1);
+  if(!cv||!cl.pitch) return;
+  let drag=null;
+  cv.addEventListener("pointerdown",e=>{
+    const g=cv._geom; if(!g) return;
+    const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    const hit=[...cl.pitch.notes].reverse().find(n=>{
+      const bx=g.X(n.start), bw=Math.max(6,g.X(n.end)-bx);
+      return x>=bx&&x<=bx+bw&&Math.abs(y-g.Y(n.midi+n.shift))<=Math.max(11,g.rh*0.5);
+    });
+    pitchSelNote=hit?hit.id:null;
+    if(hit){ drag={id:hit.id,y0:y,shift0:hit.shift,moved:false}; cv.setPointerCapture(e.pointerId); }
+    drawPitch(cv,cl); updatePitchInfo(cl);
+  });
+  cv.addEventListener("pointermove",e=>{
+    if(!drag||!cv._geom) return;
+    const r=cv.getBoundingClientRect(), y=e.clientY-r.top;
+    const nt=cl.pitch.notes.find(n=>n.id===drag.id); if(!nt) return;
+    const ns=clamp(drag.shift0+Math.round((drag.y0-y)/cv._geom.rh),-12,12);
+    if(ns!==nt.shift){ nt.shift=ns; drag.moved=true; drawPitch(cv,cl); updatePitchInfo(cl); }
+  });
+  cv.addEventListener("pointerup",()=>{ if(drag&&drag.moved){ refreshPitchRender(cl); updatePitchInfo(cl); } drag=null; });
+}
+
 /* ----- split / delete ----- */
 function splitSelected(){
   const fc=findClip(S.selClip); if(!fc){ toast("分割するクリップを選んでください"); return; }
@@ -1223,6 +1604,8 @@ function splitSelected(){
   if(t<=cl.start+0.02||t>=cl.start+cl.dur-0.02){ toast("再生ヘッドがクリップの内側にある位置で分割してください"); return; }
   const right={id:nid(),name:cl.name,buffer:cl.buffer,start:t,offset:cl.offset+(t-cl.start),dur:cl.start+cl.dur-t,
     gain:cl.gain,fadeIn:0,fadeOut:cl.fadeOut};
+  /* ピッチ補正はバッファ時刻座標なので、分割してもそのまま引き継げる */
+  if(cl.pitch){ right.pitch=JSON.parse(JSON.stringify(cl.pitch)); right.pitchOn=cl.pitchOn; right.corrBuffer=cl.corrBuffer; }
   cl.dur=t-cl.start; cl.fadeOut=0;
   tr.clips.splice(tr.clips.indexOf(cl)+1,0,right); S.selClip=right.id;
   renderTimeline(); renderInspector(); if(S.playing)startSources(currentPos());
@@ -1246,10 +1629,11 @@ $("#masterVol").addEventListener("input",e=>{ if(S.master)S.master.gain.setTarge
 $("#bpmIn").addEventListener("change",e=>{ S.bpm=clamp(parseFloat(e.target.value)||120,40,240); e.target.value=S.bpm;
   renderTimeline(); });
 $("#btnImport").onclick=()=>$("#fileIn").click();
-$("#btnImport2").onclick=()=>$("#fileIn").click();
-$("#btnCloseNote").onclick=()=>$("#emptyNote").hidden=true;
-$("#btnDemo").onclick=()=>buildDemoProject();
-$("#btnExportGo").onclick=()=>{ curTab="exp"; renderInspector(); $("#tlWrap").scrollIntoView(false); };
+$("#btnDemo").onclick=()=>requestDemoLoad();
+$("#btnDemoOk").onclick=()=>{ $("#demoConfirm").hidden=true; buildDemoProject(); };
+$("#btnDemoCancel").onclick=()=>{ $("#demoConfirm").hidden=true; };
+$("#demoConfirm").addEventListener("click",e=>{ if(e.target.id==="demoConfirm") e.currentTarget.hidden=true; });
+$("#btnExportGo").onclick=()=>{ curTab="exp"; renderInspector(); document.querySelector(".insp").scrollIntoView({behavior:"smooth",block:"start"}); };
 $("#fileIn").addEventListener("change",e=>{ importFiles(e.target.files); e.target.value=""; });
 $("#btnAddTrack").onclick=()=>{ const type=$("#newTrackType").value;
   const tr=newTrack(TYPES[type].label+" "+(S.tracks.filter(t=>t.type===type).length+1),type);
@@ -1274,11 +1658,10 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="Delete"||e.key==="Backspace") deleteSelected();
   else if(e.key==="Home") seek(0);
 });
-window.addEventListener("resize",()=>{ renderTimeline(); });
+window.addEventListener("resize",()=>{ renderTimeline(); if(curTab==="pitch") renderInspector(); });
 
-/* 初期化: デモ曲を自動生成 */
+/* 初期化: 空のタイムラインで静かに起動（デモ曲は手動読み込み、使い方は「取扱説明書」タブに集約） */
 renderTimeline(); renderInspector();
-buildDemoProject().then(()=>{ $("#emptyNote").hidden=false; });
 requestAnimationFrame(raf);
 
 /* ---------- playhead / meters loop ---------- */
