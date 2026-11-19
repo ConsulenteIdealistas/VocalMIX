@@ -244,6 +244,8 @@
       .impbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .15s}
       .impbar.indet i{width:100%;animation:imppulse 1s ease-in-out infinite alternate}
       @keyframes imppulse{from{opacity:.35}to{opacity:1}}
+      .impspec,.impaudit{font-family:var(--mono);font-size:11px;color:var(--tx2);margin-top:3px}
+      .impaudit.warn{color:#d98a7d}
       .confirmveil{position:fixed;inset:0;background:rgba(12,8,4,.62);z-index:70;display:grid;place-items:center;padding:16px}
       .confirmveil[hidden]{display:none}
       .confirmbox{max-width:480px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
@@ -1141,6 +1143,41 @@ function impText(kind,pct){
   if(kind==="failed") return ja?"読み込めませんでした":"Could not load";
   return kind;
 }
+/* WAV header parse (spec + simple audit). Returns null for non-WAV. */
+function parseWav(ab){
+  try{
+    const dv=new DataView(ab), u8=new Uint8Array(ab);
+    const tag=o=>String.fromCharCode(u8[o],u8[o+1],u8[o+2],u8[o+3]);
+    if(ab.byteLength<44||tag(0)!=="RIFF"||tag(8)!=="WAVE") return null;
+    let fmt=null, dataBytes=0, truncated=false, off=12;
+    while(off+8<=ab.byteLength){
+      const id=tag(off), sz=dv.getUint32(off+4,true);
+      if(id==="fmt ") fmt={ch:dv.getUint16(off+10,true), sr:dv.getUint32(off+12,true), bits:dv.getUint16(off+22,true)};
+      if(id==="data"){ dataBytes=sz; if(off+8+sz>ab.byteLength) truncated=true; }
+      if(sz===0&&id!=="data") break;
+      off+=8+sz+(sz%2);
+    }
+    const issues=[];
+    if(!fmt) issues.push("no fmt chunk");
+    if(!dataBytes) issues.push("no data chunk");
+    if(truncated) issues.push("data chunk truncated");
+    if(dv.getUint32(4,true)+8>ab.byteLength) issues.push("RIFF size exceeds file");
+    return {fmt, issues};
+  }catch(e){ return null; }
+}
+/* Light audit over the decoded buffer (strided sampling, ~200k points max). */
+function auditBuffer(buf){
+  const ch=buf.numberOfChannels, len=buf.length, step=Math.max(1,Math.floor(len/200000));
+  const chans=[]; for(let c=0;c<ch;c++) chans.push(buf.getChannelData(c));
+  let peak=0, clip=0, silent=0, n=0, sum=0;
+  for(let i=0;i<len;i+=step) for(let c=0;c<ch;c++){
+    const v=chans[c][i], a=Math.abs(v);
+    if(a>peak) peak=a; if(a>=0.999) clip++; if(a<0.001) silent++; sum+=v; n++;
+  }
+  return { peakDb: peak>0 ? (20*Math.log10(peak)).toFixed(1) : "-inf", clip,
+           silencePct: n?Math.round(silent/n*100):0, dc: n?(sum/n):0 };
+}
+function fmtDur(s){ const m=Math.floor(s/60), ss=Math.floor(s%60); return m+":"+String(ss).padStart(2,"0"); }
 async function readWithProgress(f,onp){
   if(!f.stream) return f.arrayBuffer();
   try{
@@ -1159,17 +1196,19 @@ async function importFiles(files){
   rowsEl.innerHTML=""; panel.hidden=false; clearTimeout(panel._h);
   const rows=list.map(f=>{
     const row=document.createElement("div"); row.className="improw";
-    row.innerHTML='<div class="impmeta"><span class="impname"></span><span class="impsize"></span><span class="impstat"></span></div><div class="impbar"><i></i></div>';
+    row.innerHTML='<div class="impmeta"><span class="impname"></span><span class="impsize"></span><span class="impstat"></span></div><div class="impbar"><i></i></div><div class="impspec"></div><div class="impaudit"></div>';
     row.querySelector(".impname").textContent=f.name;
     row.querySelector(".impsize").textContent=fmtSize(f.size);
     rowsEl.appendChild(row);
     const stat=row.querySelector(".impstat"), bar=row.querySelector(".impbar"), fill=row.querySelector(".impbar i");
+    const specEl=row.querySelector(".impspec"), auditEl=row.querySelector(".impaudit");
     stat.textContent=impText("queued");
     return { set(kind,pct){ stat.textContent=impText(kind,pct);
-      row.classList.toggle("done",kind==="loaded"); row.classList.toggle("fail",kind==="failed");
-      bar.classList.toggle("indet",kind==="decoding");
-      if(kind==="reading") fill.style.width=pct+"%";
-      if(kind==="decoding"||kind==="loaded"||kind==="failed") fill.style.width="100%"; } };
+        row.classList.toggle("done",kind==="loaded"); row.classList.toggle("fail",kind==="failed");
+        bar.classList.toggle("indet",kind==="decoding");
+        if(kind==="reading") fill.style.width=pct+"%";
+        if(kind==="decoding"||kind==="loaded"||kind==="failed") fill.style.width="100%"; },
+      setSpec(spec,audit,warn){ specEl.textContent=spec; auditEl.textContent=audit; auditEl.classList.toggle("warn",!!warn); } };
   });
   let failed=0;
   for(let i=0;i<list.length;i++){
@@ -1177,7 +1216,16 @@ async function importFiles(files){
     try{
       const ab=await readWithProgress(f,pct=>ui.set("reading",pct));
       ui.set("decoding");
+      const wav=parseWav(ab);
       const buf=await S.ctx.decodeAudioData(ab);
+      const au=auditBuffer(buf);
+      const ext=(f.name.split(".").pop()||"").toUpperCase();
+      const spec=ext+" · "+(buf.sampleRate/1000).toFixed(1)+" kHz · "+buf.numberOfChannels+"ch"
+        +(wav&&wav.fmt?" · "+wav.fmt.bits+"bit":"")+" · "+fmtDur(buf.duration);
+      const issues=wav?wav.issues:[];
+      const audit="Peak "+au.peakDb+" dB · Clip "+au.clip+" · Silence "+au.silencePct+"% · DC "+au.dc.toFixed(3)
+        +(issues.length?" · ⚠ "+issues.join(", "):"");
+      ui.setSpec(spec,audit,au.clip>0||issues.length>0);
       const nm=f.name.replace(/\.[^.]+$/,"");
       const type=/harmony|chorus|harm/i.test(nm)?"harmony":(/inst|off|karaoke|backing/i.test(nm)?"inst":"vocal");
       const tr=newTrack(nm,type);
