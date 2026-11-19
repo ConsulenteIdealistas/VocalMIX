@@ -1319,6 +1319,7 @@ function manualHTML(){
     <li>The Effects tab adjusts EQ, compressor, reverb and delay per track, and the chain order can be rearranged.</li>
     <li>Switching the toolbar's Automation mode lets you draw volume / pan for the selected track on the timeline (click to add a point, right-click to delete).</li>
     <li>When finished, export as WAV / MP3 from the Export button at the top (48 kHz / 24 bit available).</li>
+    <li>Fine adjustment: click the numeric readout next to a slider to type the value directly (in the displayed units — dB, %, ms). Enter applies, Esc cancels.</li>
   </ul>
   </div>`;
 }
@@ -1926,6 +1927,85 @@ function raf(){
     }
   }
 }
+
+/* ---------- typed value entry (click a slider readout) ----------
+   Fine-grained control: clicking the numeric readout next to a slider
+   (or the value inside a mixer mini-row label) turns it into a text
+   field. Enter applies, Esc cancels. Values are typed in the displayed
+   units (dB, %, ms, s) and converted back through the ratio between
+   the readout and the slider's own value, so transformed readouts
+   (delay time in ms, return feedback in %) stay correct. Readouts
+   that do not parse as a number (e.g. "-∞") are left alone. */
+(function(){
+  function readoutFor(el){
+    if(el.tagName==="OUTPUT"){
+      var p=el.previousElementSibling;
+      if(p && p.type==="range") return {disp:el, slider:p};
+    }
+    if(el.tagName==="SPAN"){
+      var mini=el.closest ? el.closest(".mini") : null;
+      if(mini){
+        var r=mini.querySelector("input[type=range]");
+        if(r) return {disp:el, slider:r};
+      }
+    }
+    return null;
+  }
+  function parseDisp(text){
+    text=(text||"").trim();
+    var m=/^([+-]?\d+(?:\.\d+)?)/.exec(text);
+    if(m) return parseFloat(m[1]);
+    if(/^L(\d+(?:\.\d+)?)$/.test(text)) return -parseFloat(RegExp.$1);
+    if(/^R(\d+(?:\.\d+)?)$/.test(text)) return parseFloat(RegExp.$1);
+    if(text==="C") return 0;
+    return null;
+  }
+  document.addEventListener("click", function(e){
+    var hit=readoutFor(e.target);
+    if(!hit) return;
+    var disp=hit.disp, slider=hit.slider;
+    var sv=parseFloat(slider.value);
+    var cur=parseDisp(disp.textContent);
+    var ratio=1;
+    if(cur===null){
+      if((disp.textContent||"").trim()==="-∞" && isFinite(sv)){ cur=sv; }
+      else return;
+    } else if(cur!==0 && isFinite(sv)){
+      ratio=sv/cur;
+    }
+    e.preventDefault(); e.stopPropagation();
+    var input=document.createElement("input");
+    input.type="text"; input.className="numedit"; input.value=String(cur);
+    input.setAttribute("inputmode","decimal");
+    input.setAttribute("aria-label","Type a value");
+    disp.replaceWith(input);
+    input.focus(); input.select();
+    var done=false;
+    function finish(commit){
+      if(done) return; done=true;
+      var v=input.value;
+      if(input.parentNode) input.replaceWith(disp);
+      if(!commit) return;
+      var num=parseFloat(v);
+      if(!isFinite(num)) return;
+      var min=parseFloat(slider.min||"0"), max=parseFloat(slider.max||"100"), step=parseFloat(slider.step||"1");
+      var raw=num*ratio;
+      raw=min+Math.round((raw-min)/step)*step;
+      raw=Math.max(min, Math.min(max, raw));
+      var dec=(String(step).split(".")[1]||"").length;
+      slider.value=raw.toFixed(dec);
+      slider.dispatchEvent(new Event("input", {bubbles:true}));
+      slider.dispatchEvent(new Event("change", {bubbles:true}));
+    }
+    input.addEventListener("keydown", function(ev){
+      if(ev.key==="Enter"){ finish(true); }
+      else if(ev.key==="Escape"){ finish(false); }
+      ev.stopPropagation();
+    });
+    input.addEventListener("click", function(ev){ ev.stopPropagation(); });
+    input.addEventListener("blur", function(){ finish(true); });
+  });
+})();
 
 /* VocalMIX language layer: EN (source) / JA (dictionary). Default EN.
    In EN mode nothing changes; in JA mode rendered UI text is translated
