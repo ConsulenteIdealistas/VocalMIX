@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <link rel="icon" href="data:," />
+    <meta name="theme-color" content="#171013" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VocalMIX" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
     <style>
       button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
@@ -507,6 +513,10 @@
 .langseg{display:inline-flex;margin-right:8px}
 </style>
 <style>
+/* App-like feel: no pull-to-refresh / rubber-band chaining, no tap flash. */
+html{overscroll-behavior:none}
+body{-webkit-tap-highlight-color:transparent}
+button,.tbtn,.strip,.lane{user-select:none;-webkit-user-select:none}
 /* Page navigation lives in the top bar, not the tab row: tabs only
    switch in-page panels, links that leave the page look like links. */
 .navlink{display:inline-flex;align-items:center;min-height:32px;padding:4px 10px;
