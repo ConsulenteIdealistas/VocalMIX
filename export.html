@@ -507,6 +507,12 @@
 .langseg{display:inline-flex;margin-right:8px}
 </style>
 <style>
+/* Page navigation lives in the top bar, not the tab row: tabs only
+   switch in-page panels, links that leave the page look like links. */
+.navlink{display:inline-flex;align-items:center;min-height:32px;padding:4px 10px;
+  border:1px solid var(--line);border-radius:6px;color:var(--tx2);text-decoration:none;
+  font-family:var(--sans-ui);font-weight:500;letter-spacing:.045em;white-space:nowrap}
+.navlink:hover{color:var(--tx);border-color:var(--tx3)}
 /* ---------- Mobile layout (<=760px): timeline first ----------
    PC keeps the dense DAW layout. On phones the top of the page is
    compressed so the timeline gets the room: playback lives only in
@@ -563,6 +569,7 @@
           <button id="btnImport">+ Import Audio</button>
           <button id="btnDemo">Load Demo Song</button>
           <button id="btnExportGo" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700">Export</button>
+          <a class="navlink" id="btnManualGo" href="manual.html">Manual</a>
         </div>
       </div>
 
@@ -617,8 +624,6 @@
           <button data-t="fx">Effects</button>
           <button data-t="pitch">Pitch Correction</button>
           <button data-t="mix">Mixer</button>
-          <button data-t="exp">Export</button>
-          <button data-t="manual">Manual</button>
         </div>
         <div class="tabbody" id="tabBody"></div>
       </div>
@@ -1491,7 +1496,6 @@ function renderInspector(){
   else if(curTab==="fx") body.innerHTML=fxHTML(), wireFx();
   else if(curTab==="mix") body.innerHTML=mixHTML(), wireMix();
   else if(curTab==="pitch") body.innerHTML=pitchHTML(), wirePitch();
-  else if(curTab==="manual") body.innerHTML=manualHTML(), wireManual();
   else body.innerHTML=expHTML(), wireExp();
 }
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
@@ -1934,7 +1938,7 @@ function manualHTML(){
     <li>Wait a moment for generation to finish; three tracks (backing + vocal + harmony, synth-generated) appear on the timeline.</li>
     <li>Press play to listen, and try the EQ, compressor, send reverb and automation.</li>
   </ol>
-  <p>Loading while tracks exist replaces them with the demo song. A confirmation appears first, so if you are working with your own audio, export it from the Export tab beforehand.</p>
+  <p>Loading while tracks exist replaces them with the demo song. A confirmation appears first, so if you are working with your own audio, export it with the Export button at the top beforehand.</p>
   <div class="row"><button id="btnManualDemo">Load Demo Song</button></div>
   <h3>Pitch Correction — Non-Destructive Layer (VariAudio-style, for monophonic vocals)</h3>
   <ol>
@@ -1962,14 +1966,11 @@ function manualHTML(){
     <li>Drag clips to move them; drag either edge to trim. Select a clip and press <span class="kbd">S</span> to split, <span class="kbd">Del</span> to delete.</li>
     <li>The Effects tab adjusts EQ, compressor, reverb and delay per track, and the chain order can be rearranged.</li>
     <li>Switching the toolbar's Automation mode lets you draw volume / pan for the selected track on the timeline (click to add a point, right-click to delete).</li>
-    <li>When finished, export as WAV / MP3 from the Export tab (48 kHz / 24 bit available).</li>
+    <li>When finished, export as WAV / MP3 from the Export button at the top (48 kHz / 24 bit available).</li>
   </ul>
   </div>`;
 }
-function wireManual(){
-  const bi=$("#btnManualImport"); if(bi) bi.onclick=()=>$("#fileIn").click();
-  const bd=$("#btnManualDemo"); if(bd) bd.onclick=()=>requestDemoLoad();
-}
+
 function requestDemoLoad(){
   if(!S.tracks.length){ buildDemoProject(); return; }
   const dc=$("#demoConfirm"); if(dc) dc.hidden=false;
@@ -2529,7 +2530,7 @@ document.addEventListener("keydown",e=>{
 });
 window.addEventListener("resize",()=>{ renderTimeline(); if(curTab==="pitch") renderInspector(); });
 
-/* Init: start quietly with an empty timeline (the demo song loads manually; usage is collected in the Manual tab) */
+/* Init: start quietly with an empty timeline (the demo song loads manually; usage is collected in the Manual page) */
 renderTimeline(); renderInspector();
 requestAnimationFrame(raf);
 
