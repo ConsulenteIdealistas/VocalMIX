@@ -1942,7 +1942,7 @@ function manualHTML(){
   <div class="row"><button id="btnManualDemo">Load Demo Song</button></div>
   <h3>Pitch Correction — Non-Destructive Layer (VariAudio-style, for monophonic vocals)</h3>
   <ol>
-    <li>Select a vocal clip on the timeline and open the Pitch Correction tab. At the top you will see the structure: Source Audio (always kept) → Pitch Correction Layer.</li>
+    <li>Select a vocal clip on the timeline and open the Pitch Correction tab. At the top you will see the structure: Source Audio (always kept) → Pitch Correction Layer. On a phone, "Open Full-Screen Editor" in that tab moves the piano roll to a page of its own; "Save & Back" there returns the edits to this project.</li>
     <li>Press "Analyze Pitch" to detect pitch and display it as notes (blocks). The source is never rewritten; detection results live only in the layer.</li>
     <li>Drag blocks up or down to correct in semitone steps. "Snap to Nearest Note" pulls enabled notes to the nearest pitch. To revert a single note, select it and disable it with "Note ON/OFF" (or double-click).</li>
     <li>Use "Correction Strength" to adjust how far notes are pulled. Presets: Natural 60% / Standard 85% / Full 100%. Turning the layer OFF plays the original immediately, and deleting the layer still keeps the source.</li>
@@ -2297,6 +2297,7 @@ function pitchHTML(){
   const L=pitchLayer(cl);
   const strength=L?(L.strength==null?1:L.strength):1;
   let h=`<div class="pitchwrap"><h3>Pitch Correction — ${esc(tr.name)} / ${esc(cl.name)}</h3>`;
+  h+=`<div class="pitchbar"><button id="btnOpenPitchPage">Open Full-Screen Editor</button><span class="small">Full-screen page — easier on a phone.</span></div>`;
   if(tr.type==="inst") h+=`<p class="small">This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.</p>`;
   /* --- Layer structure (non-destructive) --- */
   h+=`<div class="layerstack" aria-label="Layer structure">
@@ -2388,8 +2389,10 @@ function drawPitch(cv,cl){
 }
 function wirePitch(){
   const fc=findClip(S.selClip); if(!fc) return;
-  const {cl}=fc;
+  const {tr,cl}=fc;
   const L=pitchLayer(cl);
+  const op=$("#btnOpenPitchPage");
+  if(op) op.onclick=()=>{ if(window.VM_openPitchPage) window.VM_openPitchPage(tr.id,cl.id); else toast("The full-screen editor is not available on this page"); };
   const cv=$("#pitchCanvas");
   if(cv) requestAnimationFrame(()=>drawPitch(cv,cl));
   const an=$("#btnAnalyze");
@@ -2735,6 +2738,137 @@ function raf(){
   }
   var go=document.querySelector("#btnExportGo");
   if(go) go.onclick=goExport;
+
+  /* ----- Pitch editor page: round-trip handoff -----
+     Departure (VM_openPitchPage) stores the whole project under
+     "current" (same slot the export page reads) plus a "pitch-session"
+     marker naming the target clip. The pitch page writes back ONLY the
+     edited pitch layer under "pitch-return". On return, the presence of
+     "pitch-session" triggers a one-time restore from "current" and the
+     returned layer is applied to that clip; all three keys are cleared.
+     With no "pitch-return" (Discard, or the tab was closed), the same
+     restore brings the project back unchanged. */
+  function dbOpen(){
+    return new Promise(function(res, rej){
+      var rq=indexedDB.open("vocalmix-handoff", 1);
+      rq.onupgradeneeded=function(){ rq.result.createObjectStore("state"); };
+      rq.onsuccess=function(){ res(rq.result); };
+      rq.onerror=function(){ rej(rq.error); };
+    });
+  }
+  function loadKey(db, key){
+    return new Promise(function(res, rej){
+      var g=db.transaction("state", "readonly").objectStore("state").get(key);
+      g.onsuccess=function(){ res(g.result||null); };
+      g.onerror=function(){ rej(g.error); };
+    });
+  }
+  function putKey(db, key, val){
+    return new Promise(function(res, rej){
+      var tx=db.transaction("state", "readwrite");
+      tx.objectStore("state").put(val, key);
+      tx.oncomplete=function(){ res(); };
+      tx.onerror=function(){ rej(tx.error); };
+    });
+  }
+  function delKey(db, key){
+    return new Promise(function(res, rej){
+      var tx=db.transaction("state", "readwrite");
+      tx.objectStore("state").delete(key);
+      tx.oncomplete=function(){ res(); };
+      tx.onerror=function(){ rej(tx.error); };
+    });
+  }
+  function revive(v, buffers){
+    if(Array.isArray(v)) return v.map(function(x){ return revive(x, buffers); });
+    if(v && typeof v==="object"){
+      if(ArrayBuffer.isView(v)) return v;
+      if("$buf" in v) return buffers[v.$buf];
+      var o={};
+      for(var k of Object.keys(v)) o[k]=revive(v[k], buffers);
+      return o;
+    }
+    return v;
+  }
+  function restoreProject(p){
+    var mv=document.querySelector("#masterVol"); if(mv && p.masterVol!=null) mv.value=p.masterVol;
+    var bi=document.querySelector("#bpmIn"); if(bi) bi.value=p.bpm;
+    var zr=document.querySelector("#zoomR"); if(zr) zr.value=p.px;
+    var oc=new OfflineAudioContext(1, 1, 44100);
+    var buffers=p.bufs.map(function(b){
+      var ab=oc.createBuffer(b.ch.length, b.ch[0].length, b.sr);
+      b.ch.forEach(function(d, c){ ab.getChannelData(c).set(d); });
+      return ab;
+    });
+    S.buses=revive(p.buses, buffers);
+    S.tracks=revive(p.tracks, buffers);
+    S.bpm=p.bpm; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
+    S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
+    S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
+    S.selTrack=p.selTrack; S.selClip=p.selClip;
+    var bs=document.querySelector("#btnSnap"); if(bs) bs.classList.toggle("on", !!p.snap);
+    var maxId=0;
+    (function walk(v){
+      if(typeof v==="string"){ var m=/^id(\d+)$/.exec(v); if(m) maxId=Math.max(maxId, parseInt(m[1],10)); }
+      else if(Array.isArray(v)) v.forEach(walk);
+      else if(v && typeof v==="object" && !ArrayBuffer.isView(v)) Object.keys(v).forEach(function(k){ walk(v[k]); });
+    })(p);
+    if(maxId>=uid) uid=maxId+1;
+    ensureCtx();
+    if(p.returns && S.returns){
+      var R=S.returns;
+      R.decay=p.returns.decay; R.dlyTime=p.returns.dlyTime; R.dlyFb=p.returns.dlyFb;
+      R.conv.buffer=makeIR(S.ctx, R.decay);
+      R.dly.delayTime.value=R.dlyTime; R.fb.gain.value=R.dlyFb;
+    }
+  }
+  var pitchGoing=false;
+  window.VM_openPitchPage=async function(trackId, clipId){
+    if(pitchGoing) return; pitchGoing=true;
+    try{
+      var db=await dbOpen();
+      await putKey(db, "current", serializeProject());
+      await delKey(db, "pitch-return");
+      await putKey(db, "pitch-session", {trackId: trackId, clipId: clipId, ts: Date.now()});
+      db.close();
+      location.href="pitch.html";
+    }catch(e){
+      pitchGoing=false;
+      toast("Could not hand the project over: "+((e&&e.message)||e));
+    }
+  };
+  (async function restorePitchReturn(){
+    var db=null, sess=null, proj=null, ret=null;
+    try{
+      db=await dbOpen();
+      sess=await loadKey(db, "pitch-session");
+      if(!sess){ db.close(); return; }
+      proj=await loadKey(db, "current");
+      ret=await loadKey(db, "pitch-return");
+      await delKey(db, "pitch-session");
+      await delKey(db, "pitch-return");
+      await delKey(db, "current");
+      db.close();
+    }catch(e){ if(db) try{ db.close(); }catch(_){} return; }
+    if(!proj) return;
+    restoreProject(proj);
+    if(ret && ret.clipId){
+      var fc=findClip(ret.clipId);
+      if(fc){
+        if(ret.layer){ fc.cl.pitchLayer=ret.layer; }
+        else { fc.cl.pitchLayer=null; delete fc.cl.pitch; delete fc.cl.pitchOn; }
+        invalidatePitchCache(fc.cl);
+        S.selTrack=fc.tr.id; S.selClip=fc.cl.id;
+      }
+    } else if(sess.clipId){
+      var fc2=findClip(sess.clipId);
+      if(fc2){ S.selTrack=fc2.tr.id; S.selClip=fc2.cl.id; }
+    }
+    curTab="pitch";
+    renderTimeline();
+    renderInspector();
+    toast(ret ? "Back from the pitch editor — edits applied to the layer" : "Back from the pitch editor — project restored");
+  })();
 })();
 </script>
 

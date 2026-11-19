@@ -1942,7 +1942,7 @@ function manualHTML(){
   <div class="row"><button id="btnManualDemo">Load Demo Song</button></div>
   <h3>Pitch Correction — Non-Destructive Layer (VariAudio-style, for monophonic vocals)</h3>
   <ol>
-    <li>Select a vocal clip on the timeline and open the Pitch Correction tab. At the top you will see the structure: Source Audio (always kept) → Pitch Correction Layer.</li>
+    <li>Select a vocal clip on the timeline and open the Pitch Correction tab. At the top you will see the structure: Source Audio (always kept) → Pitch Correction Layer. On a phone, "Open Full-Screen Editor" in that tab moves the piano roll to a page of its own; "Save & Back" there returns the edits to this project.</li>
     <li>Press "Analyze Pitch" to detect pitch and display it as notes (blocks). The source is never rewritten; detection results live only in the layer.</li>
     <li>Drag blocks up or down to correct in semitone steps. "Snap to Nearest Note" pulls enabled notes to the nearest pitch. To revert a single note, select it and disable it with "Note ON/OFF" (or double-click).</li>
     <li>Use "Correction Strength" to adjust how far notes are pulled. Presets: Natural 60% / Standard 85% / Full 100%. Turning the layer OFF plays the original immediately, and deleting the layer still keeps the source.</li>
@@ -2297,6 +2297,7 @@ function pitchHTML(){
   const L=pitchLayer(cl);
   const strength=L?(L.strength==null?1:L.strength):1;
   let h=`<div class="pitchwrap"><h3>Pitch Correction — ${esc(tr.name)} / ${esc(cl.name)}</h3>`;
+  h+=`<div class="pitchbar"><button id="btnOpenPitchPage">Open Full-Screen Editor</button><span class="small">Full-screen page — easier on a phone.</span></div>`;
   if(tr.type==="inst") h+=`<p class="small">This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.</p>`;
   /* --- Layer structure (non-destructive) --- */
   h+=`<div class="layerstack" aria-label="Layer structure">
@@ -2388,8 +2389,10 @@ function drawPitch(cv,cl){
 }
 function wirePitch(){
   const fc=findClip(S.selClip); if(!fc) return;
-  const {cl}=fc;
+  const {tr,cl}=fc;
   const L=pitchLayer(cl);
+  const op=$("#btnOpenPitchPage");
+  if(op) op.onclick=()=>{ if(window.VM_openPitchPage) window.VM_openPitchPage(tr.id,cl.id); else toast("The full-screen editor is not available on this page"); };
   const cv=$("#pitchCanvas");
   if(cv) requestAnimationFrame(()=>drawPitch(cv,cl));
   const an=$("#btnAnalyze");
