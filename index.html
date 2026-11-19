@@ -1165,17 +1165,31 @@ function parseWav(ab){
     return {fmt, issues};
   }catch(e){ return null; }
 }
-/* Light audit over the decoded buffer (strided sampling, ~200k points max). */
-function auditBuffer(buf){
-  const ch=buf.numberOfChannels, len=buf.length, step=Math.max(1,Math.floor(len/200000));
-  const chans=[]; for(let c=0;c<ch;c++) chans.push(buf.getChannelData(c));
-  let peak=0, clip=0, silent=0, n=0, sum=0;
-  for(let i=0;i<len;i+=step) for(let c=0;c<ch;c++){
-    const v=chans[c][i], a=Math.abs(v);
-    if(a>peak) peak=a; if(a>=0.999) clip++; if(a<0.001) silent++; sum+=v; n++;
-  }
-  return { peakDb: peak>0 ? (20*Math.log10(peak)).toFixed(1) : "-inf", clip,
-           silencePct: n?Math.round(silent/n*100):0, dc: n?(sum/n):0 };
+/* Whitelist audit — no recomputation over the audio data.
+   Gate 1 (extension/MIME) already ran in the import filter.
+   Gate 2: magic-byte signature per format; a mismatch is cut
+   before decoding (a text file renamed to .wav dies here).
+   Gate 3: spec collation — sample rate / bit depth / channels
+   against the standard whitelist; misses are flagged, not cut. */
+const WL_SR=new Set([8000,11025,16000,22050,32000,44100,48000,88200,96000,176400,192000]);
+const WL_BITS=new Set([8,16,24,32]);
+function checkSignature(name,ab){
+  const u8=new Uint8Array(ab.slice(0,12));
+  const tag=(o,n)=>{ let s=""; for(let i=0;i<n;i++) s+=String.fromCharCode(u8[o+i]); return s; };
+  const ext=(name.split(".").pop()||"").toLowerCase();
+  if(ext==="wav") return (tag(0,4)==="RIFF"||tag(0,4)==="RF64")&&tag(8,4)==="WAVE";
+  if(ext==="flac") return tag(0,4)==="fLaC";
+  if(ext==="ogg") return tag(0,4)==="OggS";
+  if(ext==="m4a"||ext==="mp4") return tag(4,4)==="ftyp";
+  if(ext==="mp3") return tag(0,3)==="ID3"||(u8[0]===0xFF&&(u8[1]&0xE0)===0xE0);
+  return true;
+}
+function specAudit(wav,buf){
+  const issues=[];
+  if(!WL_SR.has(buf.sampleRate)) issues.push(buf.sampleRate+" Hz not in whitelist");
+  if(buf.numberOfChannels>2) issues.push(buf.numberOfChannels+"ch (mono/stereo expected)");
+  if(wav){ issues.push(...wav.issues); if(wav.fmt&&!WL_BITS.has(wav.fmt.bits)) issues.push(wav.fmt.bits+"bit not in whitelist"); }
+  return issues;
 }
 function fmtDur(s){ const m=Math.floor(s/60), ss=Math.floor(s%60); return m+":"+String(ss).padStart(2,"0"); }
 async function readWithProgress(f,onp){
@@ -1215,17 +1229,20 @@ async function importFiles(files){
     const f=list[i], ui=rows[i];
     try{
       const ab=await readWithProgress(f,pct=>ui.set("reading",pct));
+      if(!checkSignature(f.name,ab)){
+        failed++; ui.set("failed");
+        ui.setSpec("","Audit: signature mismatch — rejected without decoding",true);
+        continue;
+      }
       ui.set("decoding");
       const wav=parseWav(ab);
       const buf=await S.ctx.decodeAudioData(ab);
-      const au=auditBuffer(buf);
       const ext=(f.name.split(".").pop()||"").toUpperCase();
       const spec=ext+" · "+(buf.sampleRate/1000).toFixed(1)+" kHz · "+buf.numberOfChannels+"ch"
         +(wav&&wav.fmt?" · "+wav.fmt.bits+"bit":"")+" · "+fmtDur(buf.duration);
-      const issues=wav?wav.issues:[];
-      const audit="Peak "+au.peakDb+" dB · Clip "+au.clip+" · Silence "+au.silencePct+"% · DC "+au.dc.toFixed(3)
-        +(issues.length?" · ⚠ "+issues.join(", "):"");
-      ui.setSpec(spec,audit,au.clip>0||issues.length>0);
+      const issues=specAudit(wav,buf);
+      const audit=issues.length? "Audit ⚠ "+issues.join(", ") : "Audit ✓ signature + spec in whitelist";
+      ui.setSpec(spec,audit,issues.length>0);
       const nm=f.name.replace(/\.[^.]+$/,"");
       const type=/harmony|chorus|harm/i.test(nm)?"harmony":(/inst|off|karaoke|backing/i.test(nm)?"inst":"vocal");
       const tr=newTrack(nm,type);
