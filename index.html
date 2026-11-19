@@ -134,7 +134,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=9239c71326"></script>
+<script src="app.js?v=51949d61ae"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -196,11 +196,36 @@
   var going=false;
   async function goExport(){
     if(going) return; going=true;
-    try{ await saveHandoff(); location.href="export.html"; }
+    try{
+      await saveHandoff();
+      var db=await dbOpen();
+      await putKey(db, "page-session", {from:"export", ts:Date.now()});
+      db.close();
+      location.href="export.html";
+    }
     catch(e){ going=false; toast("Could not hand the project over: "+((e&&e.message)||e)); }
   }
   var go=document.querySelector("#btnExportGo");
   if(go) go.onclick=goExport;
+
+  /* ----- Manual page: same round-trip treatment -----
+     The Manual link saves the project plus a "page-session" marker
+     before navigating, so coming back restores the project (below). */
+  var manGoing=false;
+  async function goManual(e){
+    if(e) e.preventDefault();
+    if(manGoing) return; manGoing=true;
+    try{
+      await saveHandoff();
+      var db=await dbOpen();
+      await putKey(db, "page-session", {from:"manual", ts:Date.now()});
+      db.close();
+      location.href="manual.html";
+    }
+    catch(err){ manGoing=false; toast("Could not hand the project over: "+((err&&err.message)||err)); }
+  }
+  var man=document.querySelector("#btnManualGo");
+  if(man) man.addEventListener("click", goManual);
 
   /* ----- Pitch editor page: round-trip handoff -----
      Departure (VM_openPitchPage) stores the whole project under
@@ -301,19 +326,37 @@
     }
   };
   (async function restorePitchReturn(){
-    var db=null, sess=null, proj=null, ret=null;
+    var db=null, sess=null, proj=null, ret=null, page=null;
     try{
       db=await dbOpen();
       sess=await loadKey(db, "pitch-session");
-      if(!sess){ db.close(); return; }
-      proj=await loadKey(db, "current");
-      ret=await loadKey(db, "pitch-return");
-      await delKey(db, "pitch-session");
-      await delKey(db, "pitch-return");
-      await delKey(db, "current");
-      db.close();
+      if(!sess){
+        /* Export / Manual round trip: a "page-session" marker means the
+           project under "current" was saved on departure and should be
+           restored once, now. */
+        page=await loadKey(db, "page-session");
+        if(!page){ db.close(); return; }
+        proj=await loadKey(db, "current");
+        await delKey(db, "page-session");
+        await delKey(db, "current");
+        db.close();
+      } else {
+        proj=await loadKey(db, "current");
+        ret=await loadKey(db, "pitch-return");
+        await delKey(db, "pitch-session");
+        await delKey(db, "pitch-return");
+        await delKey(db, "current");
+        db.close();
+      }
     }catch(e){ if(db) try{ db.close(); }catch(_){} return; }
     if(!proj) return;
+    if(page){
+      restoreProject(proj);
+      renderTimeline();
+      renderInspector();
+      toast(page.from==="export" ? "Back from the export page — project restored" : "Back from the manual — project restored");
+      return;
+    }
     restoreProject(proj);
     if(ret && ret.clipId){
       var fc=findClip(ret.clipId);
