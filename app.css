@@ -561,6 +561,7 @@ output{cursor:pointer;border-bottom:1px dotted var(--line,#4a3540)}
 .snappanel button{min-height:44px;padding:8px 14px;font-size:14px;touch-action:manipulation}
 .snaprow .delbtn{min-width:64px}
 .snaprow .delbtn.confirm{background:#7a2d33;border-color:#e5484d;color:#fff;font-weight:700}
+#btnResetMix.confirm{background:#7a2d33;border-color:#e5484d;color:#fff;font-weight:700}
 .snapinfo{flex:1;font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tbtn.rec{color:#e5484d}
 .tbtn.rec.recording{background:#e5484d;color:#fff;animation:recpulse 1.2s ease-in-out infinite}
