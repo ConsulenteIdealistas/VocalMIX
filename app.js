@@ -4802,18 +4802,37 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
   if(/(pitch|export|manual)\.html/.test(location.pathname)) return;
   const KEY="snapshots";
   function ja(){ return vmLang()==="ja"; }
+  /* Strict read: null means the read FAILED (after one retry),
+     which callers must not confuse with an empty list - the old
+     code swallowed errors into [], so a transient IndexedDB
+     hiccup (seen on iOS Safari, whose open/close churn can fail
+     a read) made snapDelete report "not found" and do nothing,
+     and could make snapSave overwrite the whole list with just
+     the new snapshot. loadSnaps() keeps the forgiving contract
+     for display; every write path uses loadSnapsRaw(). */
+  async function loadSnapsRaw(){
+    for(let attempt=0;attempt<2;attempt++){
+      try{ const db=await window.VM_idb.open(); const v=await window.VM_idb.get(db,KEY); db.close();
+        return Array.isArray(v)?v:[]; }catch(e){ if(attempt===1) return null; await new Promise(function(r){ setTimeout(r,150); }); }
+    }
+    return null;
+  }
   async function loadSnaps(){
-    try{ const db=await window.VM_idb.open(); const v=await window.VM_idb.get(db,KEY); db.close();
-      return Array.isArray(v)?v:[]; }catch(e){ return []; }
+    const v=await loadSnapsRaw();
+    return v||[];
   }
   async function saveSnaps(list){
-    const db=await window.VM_idb.open(); await window.VM_idb.put(db,KEY,list); db.close();
+    for(let attempt=0;attempt<2;attempt++){
+      try{ const db=await window.VM_idb.open(); await window.VM_idb.put(db,KEY,list); db.close(); return; }
+      catch(e){ if(attempt===1) throw e; await new Promise(function(r){ setTimeout(r,150); }); }
+    }
   }
   async function snapSave(name){
     if(!window.VM_serializeProject){ toast("Snapshots are not available here"); return false; }
     name=(name||"").trim();
     if(!name){ const d=new Date(); name="Snapshot "+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
-    const list=await loadSnaps();
+    const list=await loadSnapsRaw();
+    if(!list){ toast(ja()?"スナップショットを読み込めませんでした。もう一度お試しください":"Could not read snapshots - please try again"); return false; }
     const proj=window.VM_serializeProject();
     const rec={name:name, ts:Date.now(), tracks:(proj.tracks||[]).length, project:proj};
     const ex=list.findIndex(function(x){ return x.name===name; });
@@ -4827,7 +4846,8 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
     return true;
   }
   async function snapLoad(name){
-    const list=await loadSnaps();
+    const list=await loadSnapsRaw();
+    if(!list){ toast(ja()?"スナップショットを読み込めませんでした。もう一度お試しください":"Could not read snapshots - please try again"); return false; }
     const rec=list.find(function(x){ return x.name===name; });
     if(!rec){ toast("Snapshot not found: "+name); return false; }
     if(S.playing) pause();
@@ -4837,12 +4857,13 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
     return true;
   }
   async function snapDelete(name){
-    const list=await loadSnaps();
+    const list=await loadSnapsRaw();
+    if(!list){ toast(ja()?"スナップショットを読み込めませんでした。もう一度お試しください":"Could not read snapshots - please try again"); return false; }
     const next=list.filter(function(x){ return x.name!==name; });
     if(next.length===list.length){ toast("Snapshot not found: "+name); return false; }
     await saveSnaps(next);
     toast("Snapshot deleted: "+name);
-    return true;
+    return next;
   }
   window.VM_snapSave=snapSave; window.VM_snapLoad=snapLoad;
   window.VM_snapDelete=snapDelete; window.VM_snapList=loadSnaps;
@@ -4863,9 +4884,9 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
   const listEl=document.createElement("div");
   panel.appendChild(head); panel.appendChild(newRow); panel.appendChild(listEl);
   document.body.appendChild(panel);
-  async function refresh(){
+  async function refresh(known){
     listEl.textContent="";
-    const list=await loadSnaps();
+    const list=Array.isArray(known)?known:await loadSnaps();
     const recs=recentLog();
     if(recs.length){ const h=document.createElement("p"); h.className="small"; h.style.fontWeight="700";
       h.textContent=ja()?"最近":"Recent"; listEl.appendChild(h);
@@ -4883,7 +4904,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
       const lb=document.createElement("button"); lb.textContent=ja()?"読込":"Load";
       lb.addEventListener("click",async function(){ await snapLoad(rec.name); refresh(); });
       const db2=document.createElement("button"); db2.className="ghost"; db2.textContent="✕";
-      db2.addEventListener("click",async function(){ await snapDelete(rec.name); refresh(); });
+      db2.addEventListener("click",async function(){ const nl=await snapDelete(rec.name); refresh(Array.isArray(nl)?nl:undefined); });
       row.appendChild(info); row.appendChild(lb); row.appendChild(db2);
       listEl.appendChild(row);
     });
