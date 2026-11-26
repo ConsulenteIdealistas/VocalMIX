@@ -4810,10 +4810,12 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
      and could make snapSave overwrite the whole list with just
      the new snapshot. loadSnaps() keeps the forgiving contract
      for display; every write path uses loadSnapsRaw(). */
+  let cache=null;
   async function loadSnapsRaw(){
+    if(cache) return cache;
     for(let attempt=0;attempt<2;attempt++){
       try{ const db=await window.VM_idb.open(); const v=await window.VM_idb.get(db,KEY); db.close();
-        return Array.isArray(v)?v:[]; }catch(e){ if(attempt===1) return null; await new Promise(function(r){ setTimeout(r,150); }); }
+        cache=Array.isArray(v)?v:[]; return cache; }catch(e){ if(attempt===1) return null; await new Promise(function(r){ setTimeout(r,150); }); }
     }
     return null;
   }
@@ -4823,7 +4825,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
   }
   async function saveSnaps(list){
     for(let attempt=0;attempt<2;attempt++){
-      try{ const db=await window.VM_idb.open(); await window.VM_idb.put(db,KEY,list); db.close(); return; }
+      try{ const db=await window.VM_idb.open(); await window.VM_idb.put(db,KEY,list); db.close(); cache=list; return; }
       catch(e){ if(attempt===1) throw e; await new Promise(function(r){ setTimeout(r,150); }); }
     }
   }
@@ -4861,7 +4863,8 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
     if(!list){ toast(ja()?"スナップショットを読み込めませんでした。もう一度お試しください":"Could not read snapshots - please try again"); return false; }
     const next=list.filter(function(x){ return x.name!==name; });
     if(next.length===list.length){ toast("Snapshot not found: "+name); return false; }
-    await saveSnaps(next);
+    try{ await saveSnaps(next); }
+    catch(e){ toast(ja()?"削除を保存できませんでした":"Could not save the deletion - please try again"); return false; }
     toast("Snapshot deleted: "+name);
     return next;
   }
@@ -4904,7 +4907,12 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
       const lb=document.createElement("button"); lb.textContent=ja()?"読込":"Load";
       lb.addEventListener("click",async function(){ await snapLoad(rec.name); refresh(); });
       const db2=document.createElement("button"); db2.className="ghost"; db2.textContent="✕";
-      db2.addEventListener("click",async function(){ const nl=await snapDelete(rec.name); refresh(Array.isArray(nl)?nl:undefined); });
+      db2.addEventListener("click",async function(){
+        row.style.opacity="0.35"; db2.disabled=true;
+        const nl=await snapDelete(rec.name);
+        if(Array.isArray(nl)) refresh(nl);
+        else{ row.style.opacity=""; db2.disabled=false; refresh(); }
+      });
       row.appendChild(info); row.appendChild(lb); row.appendChild(db2);
       listEl.appendChild(row);
     });
