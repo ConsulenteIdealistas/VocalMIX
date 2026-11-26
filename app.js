@@ -82,7 +82,7 @@ const FXDEF={
       const kt=S.tracks.find(t=>t.id===fx.key);
       return "Key: "+(kt?kt.name:"?")+" · "+fx.threshold.toFixed(0)+"dB · "+fx.ratio.toFixed(0)+":1 · max −"+fx.depth.toFixed(0)+"dB"; },
     presets:[
-      {id:"vocal",label:"Vocal over Backing",apply(f){ f.threshold=-28; f.ratio=6; f.depth=8; f.attack=0.003; f.release=0.3; }},
+      {id:"vocal",label:"Vocal over Backing",apply(f){ f.threshold=-28; f.ratio=6; f.depth=5; f.attack=0.003; f.release=0.3; }},
       {id:"glue",label:"Gentle Glue",apply(f){ f.threshold=-20; f.ratio=2; f.depth=4; f.attack=0.01; f.release=0.35; }},
       {id:"pump",label:"Pump",apply(f){ f.threshold=-30; f.ratio=8; f.depth=16; f.attack=0.002; f.release=0.12; }},
     ]},
@@ -91,8 +91,8 @@ const FXDEF={
     summary(fx){ return fx.decay.toFixed(1)+"s · Mix "+Math.round(fx.mix*100)+"%"; },
     presets:[
       {id:"plate",label:"Plate (Standard)",apply(){}},
-      {id:"room",label:"Small Room",apply(f){ f.decay=0.9; f.predelay=0.005; f.mix=0.22; }},
-      {id:"hall",label:"Hall",apply(f){ f.decay=4.2; f.predelay=0.04; f.mix=0.35; }},
+      {id:"room",label:"Small Room",apply(f){ f.decay=0.6; f.predelay=0.005; f.mix=0.22; }},
+      {id:"hall",label:"Hall",apply(f){ f.decay=2.2; f.predelay=0.04; f.mix=0.35; }},
       {id:"subtle",label:"Subtle",apply(f){ f.decay=1.8; f.predelay=0.01; f.mix=0.15; }},
     ]},
   delay:{ name:"Delay",
