@@ -30,6 +30,7 @@
           <button class="tbtn" id="btnLoop" title="Loop playback">↻</button>
           <button class="tbtn rec" id="btnRec" title="Record from microphone (R)">●</button>
           <button class="tbtn" id="btnMetro" title="Metronome / count-in">♩</button>
+          <button class="tbtn" id="btnMark" title="Add marker at playhead">⚑</button>
         </div>
         <div class="timebox">
           <div class="big" id="timeBig">0:00.000</div>
@@ -144,7 +145,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=9e90b3b7f3"></script>
+<script src="app.js?v=d91e0efc80"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -184,7 +185,7 @@
       masterVol: document.querySelector("#masterVol").value,
       limiter: S.limiter?{on:!!S.limiter.on, ceiling:S.limiter.ceiling}:null,
       returns: S.returns ? {decay:S.returns.decay, dlyTime:S.returns.dlyTime, dlyFb:S.returns.dlyFb} : null,
-      selTrack:S.selTrack, selClip:S.selClip,
+      selTrack:S.selTrack, selClip:S.selClip, markers:S.markers||[],
       buses: sanitize(S.buses, bufMap, bufs),
       tracks: sanitize(S.tracks, bufMap, bufs),
       bufs: bufs
@@ -303,6 +304,7 @@
     S.tracks=revive(p.tracks, buffers);
     S.bpm=p.bpm; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
+    S.markers=p.markers||[];
     S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
     if(p.masterVol!=null) S.masterVolSaved=p.masterVol;
