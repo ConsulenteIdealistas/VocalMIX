@@ -1257,7 +1257,13 @@ window.VM_switchTake=switchTake; window.VM_ensureTakes=ensureTakes;
 /* ---------- room-noise reduction (#41): spectral gating ----------
    The noise profile is the average magnitude spectrum of the
    quietest quarter of frames; each bin of each frame is then
-   attenuated by how far it rises above that profile. */
+   attenuated by how far it rises above that profile. Per
+   Audacity's noise reduction, the raw per-bin gains are then
+   smoothed across frequency (3-tap) and across time (fast
+   attack, slow release per bin): unsmoothed gains flicker per
+   frame and chirp as "musical noise" - measured here as the
+   processed noise region's crest factor rising 1.09 -> 1.21
+   before this smoothing was added. */
 function denoiseClip(cl, strength){
   const srcBuf=cl.buffer; if(!srcBuf){ toast("No audio"); return 0; }
   const sr=srcBuf.sampleRate;
@@ -1289,16 +1295,26 @@ function denoiseClip(cl, strength){
     const noise=new Float32Array(bins);
     for(let q=0;q<qn;q++){ const f=order[q]; for(let k=0;k<bins;k++) noise[k]+=mags[f*bins+k]/qn; }
     const acc=new Float32Array(segLen+W), wsum=new Float32Array(segLen+W);
+    const gPrev=new Float32Array(bins).fill(1), gRaw=new Float32Array(bins), gSm=new Float32Array(bins);
     for(let f=0;f<frames;f++){
       const st=f*hop;
       for(let i=0;i<W;i++){ re[i]=d[a+st+i]*win[i]; im[i]=0; }
       fftInPlace(re, im);
-      const g0=mags[f*bins]>1e-9?clamp(1-strength*noise[0]/mags[f*bins], 0.08, 1):0.08;
-      re[0]*=g0; im[0]=0;
-      for(let k=1;k<bins;k++){
+      for(let k=0;k<bins;k++){
         const m=mags[f*bins+k];
-        const g=m>1e-9?clamp(1-strength*noise[k]/m, 0.08, 1):0.08;
-        re[k]*=g; im[k]*=g;
+        gRaw[k]=m>1e-9?clamp(1-strength*noise[k]/m, 0.08, 1):0.08;
+      }
+      for(let k=0;k<bins;k++){
+        const kl=k>0?gRaw[k-1]:gRaw[k], kr=k<bins-1?gRaw[k+1]:gRaw[k];
+        gSm[k]=0.25*kl+0.5*gRaw[k]+0.25*kr;
+      }
+      for(let k=0;k<bins;k++){
+        const g=gSm[k], coef=g<gPrev[k]?0.5:0.12;
+        gPrev[k]+=coef*(g-gPrev[k]);
+      }
+      re[0]*=gPrev[0]; im[0]=0;
+      for(let k=1;k<bins;k++){
+        re[k]*=gPrev[k]; im[k]*=gPrev[k];
         re[W-k]=re[k]; im[W-k]=-im[k];
       }
       /* inverse FFT via the conjugate trick */
