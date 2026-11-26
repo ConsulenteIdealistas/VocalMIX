@@ -89,6 +89,8 @@
         <div class="grp" style="display:flex;gap:6px;align-items:center">
           <label for="zoomR">Zoom</label>
           <input type="range" id="zoomR" min="8" max="140" step="1" value="42" style="width:110px">
+          <label for="zoomV">Wave</label>
+          <input type="range" id="zoomV" min="25" max="400" step="5" value="100" style="width:70px">
         </div>
         <span class="small">Drag to move, drag the edges to trim</span>
       </div>
@@ -125,7 +127,7 @@
       <button class="tbtn" id="btnBarStop" title="Stop and return to start">■</button>
       <div class="bar-time">
         <div class="big" id="barTimeBig">0:00.000</div>
-        <div class="sub"><span id="barTimeBar">Bar 1 · Beat 1</span> · <span id="barTimeLen">0:00</span> · <span id="corrStat"></span> <span id="clipStat" style="color:#e0684f"></span></div>
+        <div class="sub"><span id="barTimeBar">Bar 1 · Beat 1</span> · <span id="barTimeLen">0:00</span> · <span id="corrStat"></span> <span id="clipStat" style="color:#e0684f"></span> <span id="latStat"></span></div>
       </div>
     </div>
 
@@ -145,7 +147,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=85f00e95d5"></script>
+<script src="app.js?v=0164222c56"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -185,7 +187,7 @@
       masterVol: document.querySelector("#masterVol").value,
       limiter: S.limiter?{on:!!S.limiter.on, ceiling:S.limiter.ceiling}:null,
       returns: S.returns ? {decay:S.returns.decay, dlyTime:S.returns.dlyTime, dlyFb:S.returns.dlyFb} : null,
-      selTrack:S.selTrack, selClip:S.selClip, markers:S.markers||[],
+      selTrack:S.selTrack, selClip:S.selClip, markers:S.markers||[], vcas:S.vcas||[],
       buses: sanitize(S.buses, bufMap, bufs),
       tracks: sanitize(S.tracks, bufMap, bufs),
       bufs: bufs
@@ -304,7 +306,7 @@
     S.tracks=revive(p.tracks, buffers);
     S.bpm=p.bpm; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
-    S.markers=p.markers||[];
+    S.markers=p.markers||[]; S.vcas=p.vcas||[];
     S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
     if(p.masterVol!=null) S.masterVolSaved=p.masterVol;
