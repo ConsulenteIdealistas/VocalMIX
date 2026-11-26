@@ -69,6 +69,7 @@
             <option value="vocal">Vocal</option>
             <option value="harmony">Harmony</option>
             <option value="inst">Backing / Instrument</option>
+            <option value="folder">Folder</option>
           </select>
           <button id="btnAddTrack">+ Add Track</button>
         </div>
@@ -152,7 +153,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=e6e8c7884a"></script>
+<script src="app.js?v=9e48ea9bc7"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -193,6 +194,7 @@
       limiter: S.limiter?{on:!!S.limiter.on, ceiling:S.limiter.ceiling}:null,
       returns: S.returns ? {decay:S.returns.decay, dlyTime:S.returns.dlyTime, dlyFb:S.returns.dlyFb} : null,
       selTrack:S.selTrack, selClip:S.selClip, markers:S.markers||[], vcas:S.vcas||[],
+      masterChain:S.masterChain||null, masterCompOn:S.masterCompOn!==false,
       buses: sanitize(S.buses, bufMap, bufs),
       tracks: sanitize(S.tracks, bufMap, bufs),
       bufs: bufs
@@ -312,6 +314,7 @@
     S.bpm=p.bpm; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
     S.markers=p.markers||[]; S.vcas=p.vcas||[];
+    if(p.masterChain) S.masterChain=p.masterChain; if(p.masterCompOn!=null) S.masterCompOn=p.masterCompOn;
     S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
     if(p.masterVol!=null) S.masterVolSaved=p.masterVol;
