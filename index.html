@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
-    <link rel="stylesheet" href="app.css?v=6caed6a654">
+    <link rel="stylesheet" href="app.css?v=ac0ddf6dda">
     
     
   
@@ -41,6 +41,7 @@
           <div class="meterwrap" title="Master level"><div class="meter"><i id="mL"></i></div><div class="meter"><i id="mR"></i></div></div>
           <label for="masterVol">Master</label>
           <input type="range" id="masterVol" min="-40" max="6" step="0.5" value="0" style="width:90px">
+          <button id="btnLimiter" class="limchip on" title="Master limiter (ceiling: limiter.ceiling parameter)">Limiter</button>
         </div>
         <div class="spacer"></div>
         <div class="grp">
@@ -140,7 +141,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=2aa07adea4"></script>
+<script src="app.js?v=8d5b567b22"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -178,6 +179,7 @@
       revMuted:S.revMuted, dlyMuted:S.dlyMuted, demoLoaded:S.demoLoaded,
       userFxPresets:S.userFxPresets, userMixPresets:S.userMixPresets,
       masterVol: document.querySelector("#masterVol").value,
+      limiter: S.limiter?{on:!!S.limiter.on, ceiling:S.limiter.ceiling}:null,
       returns: S.returns ? {decay:S.returns.decay, dlyTime:S.returns.dlyTime, dlyFb:S.returns.dlyFb} : null,
       selTrack:S.selTrack, selClip:S.selClip,
       buses: sanitize(S.buses, bufMap, bufs),
@@ -300,6 +302,7 @@
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
     S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
+    if(p.limiter){ S.limiter.on=!!p.limiter.on; if(typeof p.limiter.ceiling==="number") S.limiter.ceiling=p.limiter.ceiling; if(typeof applyLimiterLive==="function") applyLimiterLive(); }
     var bs=document.querySelector("#btnSnap"); if(bs) bs.classList.toggle("on", !!p.snap);
     var maxId=0;
     (function walk(v){

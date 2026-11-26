@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
-    <link rel="stylesheet" href="app.css?v=6caed6a654">
+    <link rel="stylesheet" href="app.css?v=ac0ddf6dda">
     
     
   
@@ -41,6 +41,7 @@
           <div class="meterwrap" title="Master level"><div class="meter"><i id="mL"></i></div><div class="meter"><i id="mR"></i></div></div>
           <label for="masterVol">Master</label>
           <input type="range" id="masterVol" min="-40" max="6" step="0.5" value="0" style="width:90px">
+          <button id="btnLimiter" class="limchip on" title="Master limiter (ceiling: limiter.ceiling parameter)">Limiter</button>
         </div>
         <div class="spacer"></div>
         <div class="grp">
@@ -140,7 +141,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=2aa07adea4"></script>
+<script src="app.js?v=8d5b567b22"></script>
 
 <style id="manualstyle">
   .manualpage{max-width:880px;margin:0 auto;padding:28px 20px 64px}
