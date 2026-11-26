@@ -1,4 +1,4 @@
-window.VM_BUILD="53c26d6";
+window.VM_BUILD="382220b";
 
 "use strict";
 /* ============================================================
@@ -420,7 +420,7 @@ function makeLimiterNodes(ctx){
      The native comp + hard clip stay downstream as backstops. */
   const inp=ctx.createGain();
   const dly=ctx.createDelay(0.05); dly.delayTime.value=la;
-  const g=ctx.createGain(); g.gain.value=1;
+  const g=ctx.createGain(); g.gain.value=0; /* the law connection supplies the absolute gain (house convention: node value 0) */
   const ab=ctx.createWaveShaper(); ab.curve=absCurve();
   /* Peak envelope: instant attack, exponential release decay.
      env = max(smoothed |x|, env delayed and decayed), with
@@ -3325,7 +3325,7 @@ async function exportVideo(aArg, bArg){
   const src=actx.createBufferSource(); src.buffer=buf; src.connect(dest);
   const vstream=cv.captureStream(30);
   const stream=new MediaStream(vstream.getVideoTracks().concat(dest.stream.getAudioTracks()));
-  const mime=["video/mp4","video/webm;codecs=vp9,opus","video/webm"].filter(function(m){ return window.MediaRecorder&&MediaRecorder.isTypeSupported(m); })[0]||"";
+  const mime=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm"].filter(function(m){ return window.MediaRecorder&&MediaRecorder.isTypeSupported(m); })[0]||"";
   const rec=new MediaRecorder(stream, mime?{mimeType:mime, videoBitsPerSecond:4000000, audioBitsPerSecond:192000}:undefined);
   const chunks=[]; rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
   const st={rec:rec, src:src, cancel:false}; _vidState=st;
@@ -5596,7 +5596,7 @@ function pitchMonStart(){
   if(!REC.stream||!S.ctx) return;
   try{
     REC.monSrc=S.ctx.createMediaStreamSource(REC.stream);
-    REC.monAn=S.ctx.createAnalyser(); REC.monAn.fftSize=2048;
+    REC.monAn=S.ctx.createAnalyser(); REC.monAn.fftSize=4096;
     REC.monSrc.connect(REC.monAn);
   }catch(e){ return; }
   const el=pitchMonEl(); el.classList.add("on");
