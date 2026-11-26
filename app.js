@@ -94,6 +94,61 @@ const FXDEF={
       {id:"tight",label:"Tight (Noisy Room)",apply(f){ f.threshold=-35; f.range=60; f.release=0.08; }},
       {id:"gentle",label:"Gentle Expander",apply(f){ f.threshold=-40; f.range=12; f.release=0.2; }},
     ]},
+  chorus:{ name:"Chorus",
+    make(){ return {type:"chorus",on:true,rate:0.8,depth:35,mix:0.3}; },
+    summary(fx){ return fx.rate.toFixed(2)+" Hz · Depth "+fx.depth.toFixed(0)+"% · Mix "+Math.round(fx.mix*100)+"%"; },
+    presets:[
+      {id:"std",label:"Gentle Chorus",apply(){}},
+      {id:"lush",label:"Lush",apply(f){ f.rate=0.35; f.depth=65; f.mix=0.45; }},
+      {id:"double",label:"Doubling",apply(f){ f.rate=0.15; f.depth=20; f.mix=0.5; }},
+    ]},
+  flanger:{ name:"Flanger",
+    make(){ return {type:"flanger",on:true,rate:0.25,depth:60,feedback:0.5,mix:0.5}; },
+    summary(fx){ return fx.rate.toFixed(2)+" Hz · FB "+Math.round(fx.feedback*100)+"%"; },
+    presets:[
+      {id:"std",label:"Classic Flanger",apply(){}},
+      {id:"jet",label:"Jet",apply(f){ f.rate=0.6; f.depth=90; f.feedback=0.75; }},
+      {id:"subtle",label:"Subtle Sweep",apply(f){ f.rate=0.1; f.depth=40; f.feedback=0.3; f.mix=0.35; }},
+    ]},
+  phaser:{ name:"Phaser",
+    make(){ return {type:"phaser",on:true,rate:0.4,depth:60,freq:600,mix:0.5}; },
+    summary(fx){ return fx.rate.toFixed(2)+" Hz · "+Math.round(fx.freq)+" Hz"; },
+    presets:[
+      {id:"std",label:"Classic Phaser",apply(){}},
+      {id:"slow",label:"Slow Sweep",apply(f){ f.rate=0.12; f.depth=80; }},
+      {id:"swirl",label:"Vocal Swirl",apply(f){ f.rate=0.8; f.freq=900; f.mix=0.35; }},
+    ]},
+  widener:{ name:"Stereo Widener",
+    make(){ return {type:"widener",on:true,width:1.3}; },
+    summary(fx){ return "Width "+fx.width.toFixed(2)+" x"; },
+    presets:[
+      {id:"std",label:"Mild Width",apply(){}},
+      {id:"wide",label:"Extra Wide",apply(f){ f.width=1.8; }},
+      {id:"mono",label:"Mono",apply(f){ f.width=0; }},
+    ]},
+  exciter:{ name:"Exciter",
+    make(){ return {type:"exciter",on:true,freq:3500,amount:0.4}; },
+    summary(fx){ return (Math.round(fx.freq/100)/10)+" kHz · "+Math.round(fx.amount*100)+"%"; },
+    presets:[
+      {id:"std",label:"Gentle Air",apply(){}},
+      {id:"presence",label:"Presence",apply(f){ f.freq=4500; f.amount=0.65; }},
+      {id:"strong",label:"Strong",apply(f){ f.freq=3000; f.amount=0.9; }},
+    ]},
+  hum:{ name:"Hum Removal",
+    make(){ return {type:"hum",on:true,freq:50}; },
+    summary(fx){ return Math.round(fx.freq)+" Hz + harmonics"; },
+    presets:[
+      {id:"hz50",label:"50 Hz (JP / EU)",apply(){}},
+      {id:"hz60",label:"60 Hz (US)",apply(f){ f.freq=60; }},
+    ]},
+  clarity:{ name:"Clarity Boost",
+    make(){ return {type:"clarity",on:true,freq:4000,amount:3}; },
+    summary(fx){ return "+"+fx.amount.toFixed(1)+" dB @ "+(Math.round(fx.freq/100)/10)+" kHz"; },
+    presets:[
+      {id:"std",label:"Clarity",apply(){}},
+      {id:"soft",label:"Soft",apply(f){ f.amount=1.5; }},
+      {id:"strong",label:"Strong",apply(f){ f.amount=6; f.freq=4500; }},
+    ]},
   sat:{ name:"Saturation",
     make(){ return {type:"sat",on:true,drive:30,mix:0.6}; },
     summary(fx){ return "Drive "+fx.drive.toFixed(0)+" · Mix "+Math.round(fx.mix*100)+"%"; },
@@ -337,6 +392,16 @@ function ensureCtx(){
   S.limiterNodes=makeLimiterNodes(ctx);
   S.master.connect(S.masterComp); S.masterComp.connect(S.limiterNodes.input);
   S.limiterNodes.output.connect(S.analyser); S.analyser.connect(ctx.destination);
+  /* Per-channel analysers for the correlation meter (#59) and the
+     clipping history (#61): tapped off the limiter output. */
+  S.splitLR=ctx.createChannelSplitter(2);
+  S.anL=ctx.createAnalyser(); S.anL.fftSize=1024;
+  S.anR=ctx.createAnalyser(); S.anR.fftSize=1024;
+  /* Tap the analyser, not the limiter output: with the limiter OFF
+     the master comp feeds the analyser directly, and the meters
+     must keep working exactly then. */
+  S.analyser.connect(S.splitLR);
+  S.splitLR.connect(S.anL,0); S.splitLR.connect(S.anR,1);
   applyLimiterLive();
   buildReturns(ctx,S.master,true);
   S.tracks.forEach(tr=>buildTrackGraph(tr));
@@ -496,6 +561,79 @@ function fxNodes(ctx,fx){
     inp.connect(rect); rect.connect(lpA); lpA.connect(lpR); lpR.connect(shaper); shaper.connect(g.gain);
     inp.connect(g); g.connect(out);
     parts.gateG=g; parts.lpA=lpA; parts.lpR=lpR; parts.shaper=shaper;
+  }else if(fx.type==="chorus"){
+    /* Two delay voices (16 ms base) with opposite-phase LFOs,
+       split L/R: the classic stereo chorus. */
+    const dry=ctx.createGain(), wet=ctx.createGain();
+    const sp=ctx.createChannelSplitter(2), mg=ctx.createChannelMerger(2);
+    const dL=ctx.createDelay(0.1), dR=ctx.createDelay(0.1);
+    const osc=ctx.createOscillator(); osc.frequency.value=fx.rate;
+    const gL=ctx.createGain(), gR=ctx.createGain();
+    const dep=fx.depth/100*0.008;
+    gL.gain.value=dep; gR.gain.value=-dep;
+    dL.delayTime.value=0.016; dR.delayTime.value=0.016;
+    dry.gain.value=1-fx.mix; wet.gain.value=fx.mix;
+    inp.connect(dry); dry.connect(out);
+    inp.connect(sp); sp.connect(dL,0); sp.connect(dR,1);
+    osc.connect(gL); gL.connect(dL.delayTime); osc.connect(gR); gR.connect(dR.delayTime);
+    dL.connect(mg,0,0); dR.connect(mg,0,1); mg.connect(wet); wet.connect(out);
+    osc.start();
+    parts.dL=dL; parts.dR=dR; parts.osc=osc; parts.gL=gL; parts.gR=gR; parts.dry=dry; parts.wet=wet;
+  }else if(fx.type==="flanger"){
+    const dry=ctx.createGain(), wet=ctx.createGain(), fb=ctx.createGain();
+    const d=ctx.createDelay(0.05); d.delayTime.value=0.002;
+    const osc=ctx.createOscillator(); osc.frequency.value=fx.rate;
+    const og=ctx.createGain(); og.gain.value=fx.depth/100*0.0015;
+    fb.gain.value=fx.feedback;
+    dry.gain.value=1-fx.mix; wet.gain.value=fx.mix;
+    inp.connect(dry); dry.connect(out);
+    inp.connect(d); d.connect(fb); fb.connect(d); d.connect(wet); wet.connect(out);
+    osc.connect(og); og.connect(d.delayTime); osc.start();
+    parts.dly=d; parts.osc=osc; parts.og=og; parts.fb=fb; parts.dry=dry; parts.wet=wet;
+  }else if(fx.type==="phaser"){
+    const dry=ctx.createGain(), wet=ctx.createGain();
+    dry.gain.value=1-fx.mix; wet.gain.value=fx.mix;
+    inp.connect(dry); dry.connect(out);
+    let node=inp; const stages=[];
+    for(let i=0;i<4;i++){ const f=ctx.createBiquadFilter(); f.type="allpass"; f.frequency.value=fx.freq; f.Q.value=1.2; node.connect(f); node=f; stages.push(f); }
+    node.connect(wet); wet.connect(out);
+    const osc=ctx.createOscillator(); osc.frequency.value=fx.rate;
+    const og=ctx.createGain(); og.gain.value=fx.freq*(fx.depth/100)*0.9;
+    osc.connect(og); stages.forEach(function(f){ og.connect(f.frequency); });
+    osc.start();
+    parts.stages=stages; parts.osc=osc; parts.og=og; parts.dry=dry; parts.wet=wet;
+  }else if(fx.type==="widener"){
+    /* Mid/side in gain form: outL = a*L + b*R, outR = b*L + a*R
+       with a=(1+w)/2, b=(1-w)/2 — w=0 mono, w=1 identity, w=2 side only. */
+    const sp=ctx.createChannelSplitter(2), mg=ctx.createChannelMerger(2);
+    const a=(1+fx.width)/2, b=(1-fx.width)/2;
+    const gLL=ctx.createGain(), gLR=ctx.createGain(), gRL=ctx.createGain(), gRR=ctx.createGain();
+    gLL.gain.value=a; gRR.gain.value=a; gLR.gain.value=b; gRL.gain.value=b;
+    inp.connect(sp);
+    sp.connect(gLL,0); gLL.connect(mg,0,0);
+    sp.connect(gLR,1); gLR.connect(mg,0,0);
+    sp.connect(gRL,0); gRL.connect(mg,0,1);
+    sp.connect(gRR,1); gRR.connect(mg,0,1);
+    mg.connect(out);
+    parts.gLL=gLL; parts.gLR=gLR; parts.gRL=gRL; parts.gRR=gRR;
+  }else if(fx.type==="exciter"){
+    const dry=ctx.createGain(), wet=ctx.createGain(), hp=ctx.createBiquadFilter(), sh=ctx.createWaveShaper();
+    hp.type="highpass"; hp.frequency.value=fx.freq;
+    sh.curve=satCurve(60); sh.oversample="2x";
+    wet.gain.value=fx.amount;
+    inp.connect(dry); dry.connect(out);
+    inp.connect(hp); hp.connect(sh); sh.connect(wet); wet.connect(out);
+    parts.hp=hp; parts.wet=wet; parts.dry=dry;
+  }else if(fx.type==="hum"){
+    let node=inp; const notches=[];
+    for(let h=1;h<=4;h++){ const f=ctx.createBiquadFilter(); f.type="peaking"; f.frequency.value=fx.freq*h; f.Q.value=30; f.gain.value=-30; node.connect(f); node=f; notches.push(f); }
+    node.connect(out);
+    parts.notches=notches;
+  }else if(fx.type==="clarity"){
+    const pk=ctx.createBiquadFilter(); pk.type="peaking"; pk.frequency.value=fx.freq; pk.Q.value=0.9; pk.gain.value=fx.amount;
+    const mud=ctx.createBiquadFilter(); mud.type="peaking"; mud.frequency.value=300; mud.Q.value=1; mud.gain.value=-1.5;
+    inp.connect(mud); mud.connect(pk); pk.connect(out);
+    parts.pk=pk; parts.mud=mud;
   }else if(fx.type==="sat"){
     const sh=ctx.createWaveShaper(); sh.curve=satCurve(fx.drive); sh.oversample="2x";
     const dry=ctx.createGain(), wet=ctx.createGain();
@@ -583,6 +721,24 @@ function applyFxLive(tr,idx,structural){
   else if(fx.type==="gate"&&p.shaper){ p.lpA.frequency.setTargetAtTime(smoothHz(fx.attack,5,500),t,0.02);
     p.lpR.frequency.setTargetAtTime(releaseHz(fx.release),t,0.02);
     p.shaper.curve=gateCurve(fx); }
+  else if(fx.type==="chorus"&&p.osc){ p.osc.frequency.setTargetAtTime(fx.rate,t,0.02);
+    const dep=fx.depth/100*0.008; p.gL.gain.setTargetAtTime(dep,t,0.02); p.gR.gain.setTargetAtTime(-dep,t,0.02);
+    p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02); }
+  else if(fx.type==="flanger"&&p.osc){ p.osc.frequency.setTargetAtTime(fx.rate,t,0.02);
+    p.og.gain.setTargetAtTime(fx.depth/100*0.0015,t,0.02); p.fb.gain.setTargetAtTime(fx.feedback,t,0.02);
+    p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02); }
+  else if(fx.type==="phaser"&&p.osc){ p.osc.frequency.setTargetAtTime(fx.rate,t,0.02);
+    p.og.gain.setTargetAtTime(fx.freq*(fx.depth/100)*0.9,t,0.02);
+    p.stages.forEach(function(f){ f.frequency.setTargetAtTime(fx.freq,t,0.02); });
+    p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02); }
+  else if(fx.type==="widener"&&p.gLL){ const a=(1+fx.width)/2, b=(1-fx.width)/2;
+    p.gLL.gain.setTargetAtTime(a,t,0.02); p.gRR.gain.setTargetAtTime(a,t,0.02);
+    p.gLR.gain.setTargetAtTime(b,t,0.02); p.gRL.gain.setTargetAtTime(b,t,0.02); }
+  else if(fx.type==="exciter"&&p.hp){ p.hp.frequency.setTargetAtTime(fx.freq,t,0.02);
+    p.wet.gain.setTargetAtTime(fx.amount,t,0.02); }
+  else if(fx.type==="hum"&&p.notches){ p.notches.forEach(function(f,i){ f.frequency.setTargetAtTime(fx.freq*(i+1),t,0.02); }); }
+  else if(fx.type==="clarity"&&p.pk){ p.pk.frequency.setTargetAtTime(fx.freq,t,0.02);
+    p.pk.gain.setTargetAtTime(fx.amount,t,0.02); }
   else if(fx.type==="sat"&&p.shaper){ p.shaper.curve=satCurve(fx.drive);
     p.dry.gain.setTargetAtTime(1-fx.mix,t,0.02); p.wet.gain.setTargetAtTime(fx.mix,t,0.02); }
   else if(fx.type==="pingpong"&&p.dL){ p.dL.delayTime.setTargetAtTime(fx.time,t,0.02);
@@ -1434,7 +1590,7 @@ function wireCh(){
 function renderTimelineSoft(){ /* Sync header fader readouts only (a full re-render would break focus while typing) */ syncMixer(); }
 
 /* ----- Effects ----- */
-const FXNAMES={eq:"Parametric EQ",comp:"Compressor",deesser:"De-Esser",ducker:"Ducker (Sidechain)",gate:"Noise Gate",sat:"Saturation",pingpong:"Ping-Pong Delay",reverb:"Reverb",delay:"Delay"};
+const FXNAMES={eq:"Parametric EQ",comp:"Compressor",deesser:"De-Esser",ducker:"Ducker (Sidechain)",gate:"Noise Gate",chorus:"Chorus",flanger:"Flanger",phaser:"Phaser",widener:"Stereo Widener",exciter:"Exciter",hum:"Hum Removal",clarity:"Clarity Boost",sat:"Saturation",pingpong:"Ping-Pong Delay",reverb:"Reverb",delay:"Delay"};
 function fxHTML(){
   const tr=selTrackObj(); if(!tr) return "<p class='small'>No tracks</p>";
   if(S.selFx>=tr.fx.length) S.selFx=tr.fx.length-1;
@@ -1474,6 +1630,32 @@ function fxHTML(){
       {k:"range",label:"Range",min:0,max:80,step:1,val:fx.range,unit:" dB",fmt:v=>v.toFixed(0)},
       {k:"attack",label:"Attack",min:0.0005,max:0.05,step:0.0005,val:fx.attack,unit:" ms",fmt:v=>Math.round(v*1000)},
       {k:"release",label:"Release",min:0.03,max:0.6,step:0.005,val:fx.release,unit:" ms",fmt:v=>Math.round(v*1000)}]);
+    else if(fx.type==="chorus") ed+=knobEditorHTML("Chorus",[
+      {k:"rate",label:"Rate",min:0.05,max:5,step:0.05,val:fx.rate,unit:" Hz",fmt:v=>v.toFixed(2)},
+      {k:"depth",label:"Depth",min:0,max:100,step:1,val:fx.depth,unit:"%",fmt:v=>v.toFixed(0)},
+      {k:"mix",label:"Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
+    else if(fx.type==="flanger") ed+=knobEditorHTML("Flanger",[
+      {k:"rate",label:"Rate",min:0.02,max:3,step:0.01,val:fx.rate,unit:" Hz",fmt:v=>v.toFixed(2)},
+      {k:"depth",label:"Depth",min:0,max:100,step:1,val:fx.depth,unit:"%",fmt:v=>v.toFixed(0)},
+      {k:"feedback",label:"Feedback",min:0,max:0.9,step:0.01,val:fx.feedback,unit:"%",fmt:v=>Math.round(v*100)},
+      {k:"mix",label:"Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
+    else if(fx.type==="phaser") ed+=knobEditorHTML("Phaser",[
+      {k:"rate",label:"Rate",min:0.02,max:3,step:0.01,val:fx.rate,unit:" Hz",fmt:v=>v.toFixed(2)},
+      {k:"depth",label:"Depth",min:0,max:100,step:1,val:fx.depth,unit:"%",fmt:v=>v.toFixed(0)},
+      {k:"freq",label:"Frequency",min:150,max:2500,step:10,val:fx.freq,unit:" Hz",fmt:v=>Math.round(v)},
+      {k:"mix",label:"Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
+    else if(fx.type==="widener") ed+=knobEditorHTML("Stereo Widener",[
+      {k:"width",label:"Width",min:0,max:2,step:0.05,val:fx.width,unit:" x",fmt:v=>v.toFixed(2)}])+
+      `<p class="small" style="margin-top:6px">0 = mono, 1 = unchanged, 2 = side only. Check the Corr meter in the bottom bar for mono compatibility (stay above 0).</p>`;
+    else if(fx.type==="exciter") ed+=knobEditorHTML("Exciter",[
+      {k:"freq",label:"Frequency",min:2000,max:8000,step:100,val:fx.freq,unit:" Hz",fmt:v=>Math.round(v)},
+      {k:"amount",label:"Amount",min:0,max:1,step:0.01,val:fx.amount,unit:"%",fmt:v=>Math.round(v*100)}]);
+    else if(fx.type==="hum") ed+=knobEditorHTML("Hum Removal",[
+      {k:"freq",label:"Fundamental",min:50,max:60,step:10,val:fx.freq,unit:" Hz",fmt:v=>Math.round(v)}])+
+      `<p class="small" style="margin-top:6px">Notches at the fundamental and its 2nd, 3rd and 4th harmonics (-30 dB, Q 30).</p>`;
+    else if(fx.type==="clarity") ed+=knobEditorHTML("Clarity Boost",[
+      {k:"freq",label:"Frequency",min:2500,max:6000,step:100,val:fx.freq,unit:" Hz",fmt:v=>Math.round(v)},
+      {k:"amount",label:"Amount",min:0,max:8,step:0.5,val:fx.amount,unit:" dB",fmt:v=>"+"+v.toFixed(1)}]);
     else if(fx.type==="sat") ed+=knobEditorHTML("Saturation",[
       {k:"drive",label:"Drive",min:0,max:100,step:1,val:fx.drive,unit:"",fmt:v=>v.toFixed(0)},
       {k:"mix",label:"Mix",min:0,max:1,step:0.01,val:fx.mix,unit:"%",fmt:v=>Math.round(v*100)}]);
@@ -1499,7 +1681,7 @@ function fxHTML(){
   return `<div class="fxwrap"><div class="chain"><h3 style="margin:0 0 4px;font-size:12px;color:var(--tx2)">Inserts — ${esc(tr.name)} (Serial Chain)</h3>
     <p class="small" style="margin:0 0 2px">Audio flows from the top stage down. Each stage is an independent unit; summaries always show here.</p>
     ${chain||"<p class='small'>No effects</p>"}
-    <div class="fld" style="margin-top:6px"><select id="addFxType"><option value="eq">EQ</option><option value="comp">Compressor</option><option value="deesser">De-Esser</option><option value="ducker">Ducker (Sidechain)</option><option value="gate">Noise Gate</option><option value="sat">Saturation</option><option value="pingpong">Ping-Pong Delay</option><option value="reverb">Reverb</option><option value="delay">Delay</option></select>
+    <div class="fld" style="margin-top:6px"><select id="addFxType"><option value="eq">EQ</option><option value="comp">Compressor</option><option value="deesser">De-Esser</option><option value="ducker">Ducker (Sidechain)</option><option value="gate">Noise Gate</option><option value="chorus">Chorus</option><option value="flanger">Flanger</option><option value="phaser">Phaser</option><option value="widener">Stereo Widener</option><option value="exciter">Exciter</option><option value="hum">Hum Removal</option><option value="clarity">Clarity Boost</option><option value="sat">Saturation</option><option value="pingpong">Ping-Pong Delay</option><option value="reverb">Reverb</option><option value="delay">Delay</option></select>
     <button id="btnAddFx">+ Add Stage</button></div></div>
     <div class="fxeditor">${ed}</div></div>`;
 }
@@ -1609,7 +1791,10 @@ function wireFx(){
 function compFmt(k,v){ return {threshold:v.toFixed(1)+" dB",ratio:v.toFixed(1)+" : 1",attack:Math.round(v*1000)+" ms",release:Math.round(v*1000)+" ms",knee:v.toFixed(0)+" dB",makeup:"+"+v.toFixed(1)+" dB"}[k]; }
 function fxFmt(type,k,v){ if(k==="freq") return Math.round(v)+" Hz";
   if(k==="threshold") return v.toFixed(1)+" dB"; if(k==="ratio") return v.toFixed(1)+" : 1";
-  if(k==="depth") return v.toFixed(1)+" dB"; if(k==="attack"||k==="release") return Math.round(v*1000)+" ms";
+  if(k==="depth") return type==="ducker"?v.toFixed(1)+" dB":v.toFixed(0)+"%";
+  if(k==="rate") return v.toFixed(2)+" Hz";
+  if(k==="width") return v.toFixed(2)+" x";
+  if(k==="amount") return type==="clarity"?("+"+v.toFixed(1)+" dB"):Math.round(v*100)+"%"; if(k==="attack"||k==="release") return Math.round(v*1000)+" ms";
   if(k==="mix"||k==="feedback") return Math.round(v*100)+"%";
   if(k==="decay") return v.toFixed(1)+" s"; if(k==="predelay") return Math.round(v*1000)+" ms";
   if(k==="time") return Math.round(v*1000)+" ms"; return String(v); }
@@ -1859,6 +2044,8 @@ function manualHTML(){
         <li>Markers: the flag button (or "mark [name]") drops a named marker at the playhead; markers show on the ruler and are saved with the project. "mark list", "mark go n", "mark del n" manage them; clicking the ruler near a marker seeks to it.</li>
         <li>Silence tools: "Split at Silence" cuts a clip at the middle of each silent gap, "Strip Silence" deletes the silent parts outright (threshold silence.db, minimum length silence.min). "Reverse" flips a clip's segment in place; "Glue with Next" bounces two clips into one (clip gain, fades and pitch are baked in).</li>
         <li>Slip & nudge: Slip (buttons or "slip &lt;sec&gt;") slides the audio inside the clip frame; "," and "." nudge the selected clip by one beat ("nudge &lt;sec&gt;" for exact amounts). Audio files can also be dropped onto the window to import. Press "?" for the shortcut list.</li>
+        <li>More stages: Chorus, Flanger, Phaser (modulation), Stereo Widener (mid/side width — watch the Corr meter), Exciter (harmonic sparkle above a chosen frequency), Hum Removal (notches at 50/60 Hz and harmonics), Clarity Boost (presence lift with a gentle de-mud cut).</li>
+        <li>Correlation & clipping: the bottom bar shows the phase correlation of the master (+1 mono-safe, negative = phasey). Peaks that hit full scale while playing are logged; "clips" lists them, "clips go n" jumps to one, "clips clear" resets.</li>
         <li>Power tools: ⚙ Params edits the app's tunable values; on a keyboard, press ":" for the command bar (try "help"; targets accept /regex/).</li>
         <li>Home-position keys: Space play/pause, S split, J/K select track, H/L seek (Shift = 5 s), M mute, O solo, U undo (Shift+U redo), D duplicate, 1–4 switch tabs, +/− zoom, Enter play from the top.</li>
         <li>Command bar extras: tab, zoom, seek (seconds, 1:30, or "bar n"), bpm, master, limiter on/off, loop (seconds or "bars a b"), addtrack, dup, rename, export, pitch.</li>
@@ -2659,6 +2846,26 @@ function raf(){
     let mx=0; for(let i=0;i<a.length;i++){ const v=Math.abs(a[i]-128)/128; if(v>mx)mx=v; }
     const pct=clamp(mx*130,0,100);
     $("#mL").style.height=pct+"%"; $("#mR").style.height=clamp(pct*0.92,0,100)+"%";
+    /* Phase correlation (#59) + clipping history (#61) */
+    if(S.anL&&S.anR){
+      if(!S._anBufL){ S._anBufL=new Float32Array(1024); S._anBufR=new Float32Array(1024); }
+      const la=S._anBufL, ra=S._anBufR;
+      S.anL.getFloatTimeDomainData(la); S.anR.getFloatTimeDomainData(ra);
+      let slr=0, sl=0, sr2=0, pk=0;
+      for(let i=0;i<1024;i++){ slr+=la[i]*ra[i]; sl+=la[i]*la[i]; sr2+=ra[i]*ra[i];
+        const av=Math.abs(la[i]), bv=Math.abs(ra[i]); if(av>pk)pk=av; if(bv>pk)pk=bv; }
+      const corr=(sl>1e-9&&sr2>1e-9)?slr/Math.sqrt(sl*sr2):0;
+      const cs=$("#corrStat"); if(cs) cs.textContent="Corr "+(corr>=0?"+":"")+corr.toFixed(2);
+      if(S.playing&&pk>=0.999){
+        const nowT=S.ctx.currentTime;
+        if(!S._lastClipT||nowT-S._lastClipT>0.25){ S._lastClipT=nowT;
+          S.clipLog=S.clipLog||[];
+          S.clipLog.push({t:Math.round(currentPos()*10)/10, peak:+pk.toFixed(3)});
+          if(S.clipLog.length>50) S.clipLog.shift();
+          const ce=$("#clipStat"); if(ce) ce.textContent="Clip \u00d7"+S.clipLog.length;
+        }
+      }
+    }
     /* GR meter */
     const tr=selTrackObj();
     if(tr&&tr.nodes&&S.selFx>=0&&tr.fx[S.selFx]&&tr.fx[S.selFx].type==="comp"){
@@ -2838,6 +3045,14 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
         return;
       }
       if(verb==="keys"){ toggleKeysPanel(); say("Shortcut panel toggled"); return; }
+      if(verb==="clips"){
+        const log=S.clipLog||[];
+        if(args[0]==="clear"){ S.clipLog=[]; const ce=$("#clipStat"); if(ce) ce.textContent=""; say("Clip history cleared"); return; }
+        if(args[0]==="go"){ const i=parseInt(args[1])-1;
+          if(log[i]){ seek(log[i].t); say("Seek: clip at "+log[i].t.toFixed(1)+"s"); } else say("clips go <number from clips>"); return; }
+        say(log.length?log.map(function(c,i){ return (i+1)+": "+c.t.toFixed(1)+"s ("+c.peak+")"; }).join(" · "):"No clipping recorded");
+        return;
+      }
       if(verb==="mark"){
         S.markers=S.markers||[];
         if(args[0]==="list"){ say(S.markers.length?S.markers.map(function(m,i){ return (i+1)+": "+m.name+" @ "+m.t.toFixed(1)+"s"; }).join(" · "):"No markers"); return; }
@@ -3485,7 +3700,7 @@ function recToggle(){ if(REC.mr){ REC.mr.stop(); } else recStart(); }
    by exact-match dictionary over text nodes, plus pattern rules for
    toasts and the bar/beat readout. */
 (function(){
-  var JA = {"+ Add Track": "＋ トラック追加", "+ Import Audio": "＋ 音声を読み込む", "Import Audio": "音声を読み込む", "Load Demo Song": "デモ曲を読み込む", "Load the demo song?": "デモ曲を読み込みますか？", "All current tracks will be replaced by the demo song (backing + vocal + harmony). If you are working with your own audio, export it first before loading.": "今あるトラックはすべてデモ曲（オケ＋ボーカル＋ハモリ）に入れ替わります。自分の音源で作業中の場合は、先に書き出してから読み込んでください。", "Cancel": "キャンセル", "Replace & Load": "入れ替えて読み込む", "Channel": "チャンネル", "Effects": "エフェクト", "Pitch Correction": "ピッチ補正", "Mixer": "ミキサー", "Export": "書き出し", "Manual": "マニュアル", "Open Full-Screen Editor": "全画面エディターで開く", "Full-screen page — easier on a phone.": "全画面ページ — スマホで編集しやすい。", "Master": "マスター", "Tracks": "トラック", "Automation": "オートメーション", "Volume": "ボリューム", "Pan": "パン", "Off": "オフ", "Snap": "スナップ", "Zoom": "ズーム", "Delete Clip": "クリップ削除", "✂ Split": "✂ 分割", "Drag to move, drag the edges to trim": "ドラッグで移動、両端でトリム", "Drop audio files here": "ここに音声ファイルをドロップ", "Vocal": "ボーカル", "Harmony": "ハモリ", "Backing / Instrument": "オケ / 楽器", "Backing": "オケ", "Vocal Bus": "ボーカル バス", "Backing (Demo)": "オケ（デモ）", "Main Vocal (Demo)": "メインボーカル（デモ）", "Harmony (Demo)": "ハモリ（デモ）", "Track Settings": "トラック設定", "Selected Clip": "選択中のクリップ", "Name": "名前", "Type": "種類", "Output Bus": "出力バス", "Output": "出力", "Start": "開始", "Time": "時間", "Gain": "ゲイン", "Fade In": "フェードイン", "Fade Out": "フェードアウト", "Reverb Send": "リバーブ センド", "Delay Send": "ディレイ センド", "REV Send": "REV センド", "DLY Send": "DLY センド", "Add Bus": "バスを追加", "Bus": "バス", "Buses": "バス", "BUS": "バス", "Direct to Master": "マスターへ直接", "→ Master": "→ マスター", "Delete": "削除", "Duplicate": "複製", "Collapse": "折りたたむ", "Open": "開く", "Reset": "リセット", "Mute": "ミュート", "Muted": "ミュート中", "No tracks": "トラックがありません", "No tracks to export.": "書き出すトラックがありません。", "No effects": "エフェクトがありません", "No clips on this track": "このトラックにクリップはありません", "Clips": "クリップ", "Clip Edit Layer": "クリップ編集レイヤー", "Source Audio": "元の音源", "Always Kept": "常に保持", "Parameters layered on top": "パラメータを上に重ねる", "↓ Parameters layered on top": "↓ パラメータを上に重ねる", "+ Add Stage": "＋ ステージ追加", "Compressor": "コンプレッサー", "Parametric EQ": "パラメトリックEQ", "Reverb": "リバーブ", "Delay": "ディレイ", "Reverb (Insert)": "リバーブ（インサート）", "EQ": "EQ", "FX": "FX", "Threshold": "スレッショルド", "Ratio": "レシオ", "Knee": "ニー", "Attack": "アタック", "Release": "リリース", "Makeup": "メイクアップ", "Decay": "減衰", "Pre-delay": "プリディレイ", "Feedback": "フィードバック", "Delay Time": "ディレイタイム", "Delay Feedback": "ディレイ フィードバック", "Tempo Sync": "テンポ同期", "No Sync": "同期なし", "Frequency Hz": "周波数 Hz", "Gain dB": "ゲイン dB", "Gain Reduction (while playing)": "ゲインリダクション（再生中）", "PRESET": "プリセット", "Save Current Settings": "現在の設定を保存", "Saved for this session only": "このセッション内のみ保存", "My preset name": "プリセット名", "MIX PRESET": "MIX プリセット", "Save Current Mix": "現在のミックスを保存", "Returns (Send Destinations)": "リターン（センド先）", "RETURN": "リターン", "Reverb Decay": "リバーブ減衰", "Applied return preset": "リターンのプリセットを適用しました", "WAV / MP3 Export (Offline Render)": "WAV / MP3 書き出し（オフラインレンダー）", "Format": "形式", "Sample Rate": "サンプルレート", "Bit Depth": "ビット深度", "File Name": "ファイル名", "WAV (Uncompressed)": "WAV（無圧縮）", "WAV only": "WAVのみ", "Renders the whole project offline. Insert FX, sends / returns, buses, automation and fades are all included.": "プロジェクト全体をオフラインで書き出します。インサートFX、センド/リターン、バス、オートメーション、フェードがすべて含まれます。", "Pitch Correction Layer": "ピッチ補正レイヤー", "Delete Layer": "レイヤーを削除", "Deletes all analysis and correction. The source audio remains.": "解析と補正をすべて削除します。元の音源は残ります。", "Analyze Pitch": "ピッチ解析", "Analyzing…": "解析中…", "Correction Strength": "補正の強さ", "Effective shift = note shift x strength": "実効シフト ＝ ノートシフト × 強さ", "Snap to Nearest Note": "最寄りの音にスナップ", "Reset Correction (shifts to 0)": "補正をリセット（シフトを0に）", "Note ON/OFF": "ノート ON/OFF", "+ Semitone": "＋ 半音", "− Semitone": "− 半音", "Layer ON": "レイヤー ON", "Layer OFF": "レイヤー OFF", "Layer structure": "レイヤー構造", "Not Created": "未作成", "Click a block to select it; drag up / down to correct in semitones": "ブロックをクリックで選択、上下ドラッグで半音単位に補正", "Not analyzed yet. Run": "まだ解析していません。次を実行：", "This clip's editor is collapsed. Audio plays with the current settings.": "このクリップのエディタは折りたたまれています。現在の設定で再生されます。", "Split at Playhead": "再生ヘッドで分割", "Volume automation (click to add a point, right-click to delete)": "ボリューム オートメーション（クリックで点を追加、右クリックで削除）", "Pan automation (click to add a point, right-click to delete)": "パン オートメーション（クリックで点を追加、右クリックで削除）", "How to Use (collapse / expand)": "使い方（折りたたみ／展開）", "Choose Audio Files": "音声ファイルを選ぶ", "Vocal Basic": "ボーカル基本", "De-Mud": "こもり解消", "Presence & Air": "抜けと空気感", "Low Cut Only": "ローカットのみ", "Cover Standard": "歌ってみた標準", "Heavy": "しっかり潰す", "Ballad (Slow)": "バラード（遅め）", "Space": "空間", "Vocal Up Front": "ボーカル前面", "Wide Harmony": "ハモリ広め", "Dry (Minimal Sends)": "ドライ（センド最小）", "Wet (Spacious)": "ウェット（広め）", "Standard (No Fade)": "標準（フェードなし）", "Smooth In & Out": "なめらかイン＆アウト", "Long Fade": "ロングフェード", "Gain +3dB": "ゲイン +3dB", "Gain −3dB": "ゲイン −3dB", "Click Removal (10ms)": "クリック除去（10ms）", "Dotted 8th (BPM Sync)": "付点8分（BPM同期）", "8th Delay": "8分ディレイ", "Slapback": "スラップバック", "Dotted 8th": "付点8分", "Quarter Note": "4分音符", "8th Note": "8分音符", "16th Note": "16分音符", "Dotted 8th Sync": "付点8分 同期", "Quarter Sync": "4分 同期", "8th Sync": "8分 同期", "16th Sync": "16分 同期", "8th Triplet": "8分三連", "No audio files found": "音声ファイルが見つかりません", "Cannot delete the last track": "最後のトラックは削除できません", "Clip duplicated (source buffer is shared = non-destructive)": "クリップを複製しました（元のバッファを共有＝非破壊）", "Clip split": "クリップを分割しました", "Correction reset (source unchanged)": "補正をリセットしました（原音は不変）", "Demo song loaded. Press play to listen.": "デモ曲を読み込みました。再生してお聴きください。", "Generating demo song…": "デモ曲を生成中…", "Layer OFF — playing the source audio": "レイヤー OFF — 原音を再生します", "Not analyzed — source only": "未解析 — 原音のみ", "Note disabled — that note plays as the original": "ノートを無効化 — そのノートは原音で再生されます", "Note enabled": "ノートを有効化", "Pitch correction layer ON": "ピッチ補正レイヤー ON", "Pitch correction layer deleted (source audio remains)": "ピッチ補正レイヤーを削除しました（原音は残ります）", "Place the playhead inside the clip to split": "分割したいクリップ内に再生ヘッドを置いてください", "Select a clip to delete": "削除するクリップを選択してください", "Select a clip to split": "分割するクリップを選択してください", "Select a note first": "先にノートを選択してください", "Snapped enabled notes to the nearest pitch (layer only; source unchanged)": "有効なノートを最寄りの音程にスナップしました（レイヤーのみ、原音は不変）", "Stage reset to defaults": "ステージを初期値にリセットしました", "Could not load the MP3 encoder. Please export as WAV.": "MP3エンコーダを読み込めませんでした。WAVで書き出してください。", "Importing Audio": "音声を読み込み中", "Queued": "待機中", "Loaded": "読み込み完了", "Could not load": "読み込めませんでした", "Close": "閉じる", "The full-screen editor is not available on this page": "このページでは全画面エディターは使えません", "Back from the pitch editor — edits applied to the layer": "ピッチエディターから戻りました — 編集をレイヤーに反映しました", "Back from the pitch editor — project restored": "ピッチエディターから戻りました — プロジェクトを復元しました", "Back from the export page — project restored": "書き出しページから戻りました — プロジェクトを復元しました", "↩ Undo": "↩ 元に戻す", "↪ Redo": "↪ やり直し", "Project restored from autosave": "自動保存からプロジェクトを復元しました", "⚙ Params": "⚙ パラメータ", "Crossfade with Next": "次のクリップとクロスフェード", "No next clip on this track": "このトラックに次のクリップがありません", "Clips do not touch — move the next clip against this one first": "クリップが接していません — 次のクリップをくっつけてから実行してください", "Crossfade too short": "クロスフェードが短すぎます", "De-Esser": "ディエッサー", "Frequency": "周波数", "Standard": "標準", "Gentle": "弱め", "Strong Sibilance": "強い歯擦音", "High & Bright": "高域・明るめ", "Limiter": "リミッター", "Ducker (Sidechain)": "ダッカー（サイドチェイン）", "Key Source": "キーソース", "— None —": "— なし —", "This track ducks when the key track plays": "キートラックが鳴るとこのトラックが下がります", "Depth": "深さ", "No key selected": "キーが未選択です", "Vocal over Backing": "ボーカル優先", "Gentle Glue": "軽いグルー", "Pump": "パンピング", "Normalize": "ノーマライズ", "Measure Loudness": "ラウドネス測定", "Snapshots": "スナップショット", "Fade In Curve": "フェードイン曲線", "Fade Out Curve": "フェードアウト曲線", "Linear": "リニア", "Equal Power": "等パワー", "S-Curve": "S字曲線", "Noise Gate": "ノイズゲート", "Vocal Gate": "ボーカルゲート", "Tight (Noisy Room)": "タイト（ノイズの多い部屋）", "Gentle Expander": "緩やかなエキスパンダー", "Range": "レンジ", "Metronome ON": "メトロノーム ON", "Metronome OFF": "メトロノーム OFF", "Count-in…": "カウントイン…", "Clip is silent — nothing to normalize": "クリップが無音です — ノーマライズできません", "Tail Fade": "曲尾フェード", "Custom (export.tailfade parameter)": "カスタム（export.tailfade パラメータ）", "Loudness Report (.txt)": "ラウドネスレポート（.txt）", "Saturation": "サチュレーション", "Subtle Warmth": "ほのかな温かみ", "Tape": "テープ", "Tube Grit": "チューブの粗さ", "Ping-Pong Delay": "ピンポンディレイ", "8th Ping-Pong": "8分ピンポン", "Wide & Long": "ワイド＆ロング", "Drive": "ドライブ", "Split at Silence": "無音で分割", "Strip Silence": "無音を取り除く", "Reverse": "リバース", "Forward": "通常再生", "Glue with Next": "次のクリップと接着", "Keyboard Shortcuts": "キーボードショートカット", "No silence found": "無音が見つかりません", "No next clip to glue": "接着する次のクリップがありません", "Glued into one clip": "1つのクリップに接着しました", "Clip reversed": "クリップをリバースしました", "Clip forward": "クリップを通常再生に戻しました", "Snapshot storage is full — delete one first": "スナップショットがいっぱいです — 先に1つ削除してください", "Snapshots are not available here": "ここではスナップショットは使えません", "Microphone recording is not supported in this browser": "このブラウザではマイク録音に対応していません", "Nothing was recorded": "何も録音されませんでした", "Recording…": "録音中…", "Custom (loudness.target parameter)": "カスタム（loudness.target パラメータ）", "Back from the manual — project restored": "マニュアルから戻りました — プロジェクトを復元しました", "Rendering…": "書き出し中…", "Audio flows from the top stage down. Each stage is an independent unit; summaries always show here.": "音は上のステージから下へ流れます。各ステージは独立したユニットで、要約は常にここに表示されます。", "Click a block to select it; drag up / down to correct in semitones. \"Note ON/OFF\" returns a single note to the original.": "ブロックをクリックで選択し、上下ドラッグで半音単位に補正します。「ノート ON/OFF」は1つのノートだけを原音に戻します。", "Clips / Mixer — Independent Units (Stage 3)": "クリップ／ミキサー — 独立ユニット", "Collapse unused stages with \"Collapse\" in the stage header to hide their parameters. The chain always shows each stage's summary, so the state stays visible while collapsed.": "使わないステージはヘッダーの「折りたたむ」でパラメータを隠せます。チェーンには各ステージの要約が常に出るので、たたんでも状態は見えます。", "Compressor — Full Control": "コンプレッサー — フルコントロール", "Correction applies to playback and export. It targets monophonic singing only (no chords, overlapping sources, or time stretching).": "補正は再生と書き出しに反映されます。対象は単音の歌声のみです（和音・重なった音源・タイムストレッチは対象外）。", "Correction is never baked into the source. Playback and export derive it from source + layer each time. Turn the layer OFF for the original instantly; deleting it still keeps the source.": "補正が原音に焼き込まれることはありません。再生と書き出しは毎回、原音＋レイヤーから導出します。レイヤーを OFF にすれば即座に原音に戻り、削除しても原音は残ります。", "Dashed = detected position; solid blocks = corrected position (strength applied). Gray = disabled notes; when the layer is OFF, everything is gray.": "破線＝検出位置、実ブロック＝補正後（強さ適用済み）。グレー＝無効化したノート。レイヤー OFF のときは全部グレーになります。", "Each stage has presets (EQ \"Vocal Basic\" and \"De-Mud\", Compressor \"Cover Standard\", and more). You can also save the current settings under a name (saved for this session only).": "各ステージにはプリセットがあります（EQ の「ボーカル基本」「こもり解消」、コンプレッサーの「歌ってみた標準」など）。現在の設定に名前を付けて保存もできます（このセッション内のみ）。", "Edits change parameters only; the source audio is never rewritten. Summaries keep the state visible while collapsed.": "編集はパラメータのみで、原音は書き換わりません。折りたたんでも要約で状態が見えます。", "Effects — Each Stage in the Serial Chain Is Independent": "エフェクト — 直列チェーンの各ステージは独立しています", "Even if you split / trim the clip after analysis, the layer carries over in buffer-time coordinates.": "解析後にクリップを分割／トリムしても、レイヤーはバッファ時間の座標で引き継がれます。", "How It Works — the Non-Destructive Design (collapse / expand)": "仕組み — 非破壊の設計（折りたたみ／展開）", "No voiced notes were detected. The audio may be too quiet or not monophonic. The source audio remains untouched.": "有声ノートが検出されませんでした。音が小さすぎるか、単音でない可能性があります。原音はそのまま残っています。", "Not analyzed yet. Run \"Analyze Pitch\" to detect notes and create this layer (the source stays untouched).": "まだ解析していません。「ピッチ解析」を実行するとノートを検出してこのレイヤーを作ります（原音には触れません）。", "Parametric EQ — drag handles (horizontal = frequency / vertical = gain), wheel for Q": "パラメトリックEQ — ハンドルをドラッグ（横＝周波数／縦＝ゲイン）、ホイールで Q", "Pitch Correction — Non-Destructive Layer": "ピッチ補正 — 非破壊レイヤー", "Press \"Analyze Pitch\" to detect pitch with the YIN method and show it as notes (blocks). Drag blocks up or down to correct in semitones, or use \"Snap to Nearest Note\" to pull all notes to the nearest pitch. Correction only layers on top; the source is never rewritten.": "「ピッチ解析」を押すと YIN 法で音程を検出し、ノート（ブロック）として表示します。ブロックを上下にドラッグして半音単位で補正するか、「最寄りの音にスナップ」で全ノートを最寄りの音程へ寄せます。補正は上に重ねるだけで、原音は書き換わりません。", "Select a clip on the timeline first. For monophonic vocal / harmony tracks (not for chords or overlapping sources).": "先にタイムラインでクリップを選んでください。単音のボーカル／ハモリ向けです（和音や重なった音源には使えません）。", "Select a stage from the list to edit its parameters here. Each stage is independent: ON/OFF, reorder, per-stage presets, duplicate and collapse.": "リストからステージを選ぶと、ここでパラメータを編集できます。各ステージは独立していて、ON/OFF・並び替え・段別プリセット・複製・折りたたみができます。", "Sends feed the return reverb / delay. Route several tracks to a bus to process them together.": "センドはリターンのリバーブ／ディレイへ送ります。複数トラックをバスへまとめると一括で処理できます。", "There are whole-mixer presets too (Cover Standard / Vocal Up Front / Dry, etc.). You can also save the current mix under a name (saved for this session only).": "ミキサー全体のプリセットもあります（歌ってみた標準／ボーカル前面／ドライ等）。現在のミックスに名前を付けて保存もできます（このセッション内のみ）。", "This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.": "このクリップはオケ／楽器トラックのものです。ピッチ補正は単音ボーカル向けの設計です。", "Re-analyze (rebuild layer)": "再解析（レイヤーを再構築）", "OFF — plays source": "OFF — 原音を再生", "Natural 60%": "ナチュラル 60%", "Standard 85%": "スタンダード 85%", "Full 100%": "フル 100%", "Pulls notes 60% of the way. Keeps vibrato and nuance.": "ノートを目標の60%まで寄せます。ビブラートとニュアンスを残します。", "The cover-song standard. Tunes pitch without sounding mechanical.": "歌ってみたの標準。機械的に聞こえない範囲で音程を整えます。", "Pulls fully to the target pitch. Meant to be combined with snap.": "目標の音程まで完全に寄せます。スナップとの併用が前提です。", "New bus name": "バス名を入力"};
+  var JA = {"+ Add Track": "＋ トラック追加", "+ Import Audio": "＋ 音声を読み込む", "Import Audio": "音声を読み込む", "Load Demo Song": "デモ曲を読み込む", "Load the demo song?": "デモ曲を読み込みますか？", "All current tracks will be replaced by the demo song (backing + vocal + harmony). If you are working with your own audio, export it first before loading.": "今あるトラックはすべてデモ曲（オケ＋ボーカル＋ハモリ）に入れ替わります。自分の音源で作業中の場合は、先に書き出してから読み込んでください。", "Cancel": "キャンセル", "Replace & Load": "入れ替えて読み込む", "Channel": "チャンネル", "Effects": "エフェクト", "Pitch Correction": "ピッチ補正", "Mixer": "ミキサー", "Export": "書き出し", "Manual": "マニュアル", "Open Full-Screen Editor": "全画面エディターで開く", "Full-screen page — easier on a phone.": "全画面ページ — スマホで編集しやすい。", "Master": "マスター", "Tracks": "トラック", "Automation": "オートメーション", "Volume": "ボリューム", "Pan": "パン", "Off": "オフ", "Snap": "スナップ", "Zoom": "ズーム", "Delete Clip": "クリップ削除", "✂ Split": "✂ 分割", "Drag to move, drag the edges to trim": "ドラッグで移動、両端でトリム", "Drop audio files here": "ここに音声ファイルをドロップ", "Vocal": "ボーカル", "Harmony": "ハモリ", "Backing / Instrument": "オケ / 楽器", "Backing": "オケ", "Vocal Bus": "ボーカル バス", "Backing (Demo)": "オケ（デモ）", "Main Vocal (Demo)": "メインボーカル（デモ）", "Harmony (Demo)": "ハモリ（デモ）", "Track Settings": "トラック設定", "Selected Clip": "選択中のクリップ", "Name": "名前", "Type": "種類", "Output Bus": "出力バス", "Output": "出力", "Start": "開始", "Time": "時間", "Gain": "ゲイン", "Fade In": "フェードイン", "Fade Out": "フェードアウト", "Reverb Send": "リバーブ センド", "Delay Send": "ディレイ センド", "REV Send": "REV センド", "DLY Send": "DLY センド", "Add Bus": "バスを追加", "Bus": "バス", "Buses": "バス", "BUS": "バス", "Direct to Master": "マスターへ直接", "→ Master": "→ マスター", "Delete": "削除", "Duplicate": "複製", "Collapse": "折りたたむ", "Open": "開く", "Reset": "リセット", "Mute": "ミュート", "Muted": "ミュート中", "No tracks": "トラックがありません", "No tracks to export.": "書き出すトラックがありません。", "No effects": "エフェクトがありません", "No clips on this track": "このトラックにクリップはありません", "Clips": "クリップ", "Clip Edit Layer": "クリップ編集レイヤー", "Source Audio": "元の音源", "Always Kept": "常に保持", "Parameters layered on top": "パラメータを上に重ねる", "↓ Parameters layered on top": "↓ パラメータを上に重ねる", "+ Add Stage": "＋ ステージ追加", "Compressor": "コンプレッサー", "Parametric EQ": "パラメトリックEQ", "Reverb": "リバーブ", "Delay": "ディレイ", "Reverb (Insert)": "リバーブ（インサート）", "EQ": "EQ", "FX": "FX", "Threshold": "スレッショルド", "Ratio": "レシオ", "Knee": "ニー", "Attack": "アタック", "Release": "リリース", "Makeup": "メイクアップ", "Decay": "減衰", "Pre-delay": "プリディレイ", "Feedback": "フィードバック", "Delay Time": "ディレイタイム", "Delay Feedback": "ディレイ フィードバック", "Tempo Sync": "テンポ同期", "No Sync": "同期なし", "Frequency Hz": "周波数 Hz", "Gain dB": "ゲイン dB", "Gain Reduction (while playing)": "ゲインリダクション（再生中）", "PRESET": "プリセット", "Save Current Settings": "現在の設定を保存", "Saved for this session only": "このセッション内のみ保存", "My preset name": "プリセット名", "MIX PRESET": "MIX プリセット", "Save Current Mix": "現在のミックスを保存", "Returns (Send Destinations)": "リターン（センド先）", "RETURN": "リターン", "Reverb Decay": "リバーブ減衰", "Applied return preset": "リターンのプリセットを適用しました", "WAV / MP3 Export (Offline Render)": "WAV / MP3 書き出し（オフラインレンダー）", "Format": "形式", "Sample Rate": "サンプルレート", "Bit Depth": "ビット深度", "File Name": "ファイル名", "WAV (Uncompressed)": "WAV（無圧縮）", "WAV only": "WAVのみ", "Renders the whole project offline. Insert FX, sends / returns, buses, automation and fades are all included.": "プロジェクト全体をオフラインで書き出します。インサートFX、センド/リターン、バス、オートメーション、フェードがすべて含まれます。", "Pitch Correction Layer": "ピッチ補正レイヤー", "Delete Layer": "レイヤーを削除", "Deletes all analysis and correction. The source audio remains.": "解析と補正をすべて削除します。元の音源は残ります。", "Analyze Pitch": "ピッチ解析", "Analyzing…": "解析中…", "Correction Strength": "補正の強さ", "Effective shift = note shift x strength": "実効シフト ＝ ノートシフト × 強さ", "Snap to Nearest Note": "最寄りの音にスナップ", "Reset Correction (shifts to 0)": "補正をリセット（シフトを0に）", "Note ON/OFF": "ノート ON/OFF", "+ Semitone": "＋ 半音", "− Semitone": "− 半音", "Layer ON": "レイヤー ON", "Layer OFF": "レイヤー OFF", "Layer structure": "レイヤー構造", "Not Created": "未作成", "Click a block to select it; drag up / down to correct in semitones": "ブロックをクリックで選択、上下ドラッグで半音単位に補正", "Not analyzed yet. Run": "まだ解析していません。次を実行：", "This clip's editor is collapsed. Audio plays with the current settings.": "このクリップのエディタは折りたたまれています。現在の設定で再生されます。", "Split at Playhead": "再生ヘッドで分割", "Volume automation (click to add a point, right-click to delete)": "ボリューム オートメーション（クリックで点を追加、右クリックで削除）", "Pan automation (click to add a point, right-click to delete)": "パン オートメーション（クリックで点を追加、右クリックで削除）", "How to Use (collapse / expand)": "使い方（折りたたみ／展開）", "Choose Audio Files": "音声ファイルを選ぶ", "Vocal Basic": "ボーカル基本", "De-Mud": "こもり解消", "Presence & Air": "抜けと空気感", "Low Cut Only": "ローカットのみ", "Cover Standard": "歌ってみた標準", "Heavy": "しっかり潰す", "Ballad (Slow)": "バラード（遅め）", "Space": "空間", "Vocal Up Front": "ボーカル前面", "Wide Harmony": "ハモリ広め", "Dry (Minimal Sends)": "ドライ（センド最小）", "Wet (Spacious)": "ウェット（広め）", "Standard (No Fade)": "標準（フェードなし）", "Smooth In & Out": "なめらかイン＆アウト", "Long Fade": "ロングフェード", "Gain +3dB": "ゲイン +3dB", "Gain −3dB": "ゲイン −3dB", "Click Removal (10ms)": "クリック除去（10ms）", "Dotted 8th (BPM Sync)": "付点8分（BPM同期）", "8th Delay": "8分ディレイ", "Slapback": "スラップバック", "Dotted 8th": "付点8分", "Quarter Note": "4分音符", "8th Note": "8分音符", "16th Note": "16分音符", "Dotted 8th Sync": "付点8分 同期", "Quarter Sync": "4分 同期", "8th Sync": "8分 同期", "16th Sync": "16分 同期", "8th Triplet": "8分三連", "No audio files found": "音声ファイルが見つかりません", "Cannot delete the last track": "最後のトラックは削除できません", "Clip duplicated (source buffer is shared = non-destructive)": "クリップを複製しました（元のバッファを共有＝非破壊）", "Clip split": "クリップを分割しました", "Correction reset (source unchanged)": "補正をリセットしました（原音は不変）", "Demo song loaded. Press play to listen.": "デモ曲を読み込みました。再生してお聴きください。", "Generating demo song…": "デモ曲を生成中…", "Layer OFF — playing the source audio": "レイヤー OFF — 原音を再生します", "Not analyzed — source only": "未解析 — 原音のみ", "Note disabled — that note plays as the original": "ノートを無効化 — そのノートは原音で再生されます", "Note enabled": "ノートを有効化", "Pitch correction layer ON": "ピッチ補正レイヤー ON", "Pitch correction layer deleted (source audio remains)": "ピッチ補正レイヤーを削除しました（原音は残ります）", "Place the playhead inside the clip to split": "分割したいクリップ内に再生ヘッドを置いてください", "Select a clip to delete": "削除するクリップを選択してください", "Select a clip to split": "分割するクリップを選択してください", "Select a note first": "先にノートを選択してください", "Snapped enabled notes to the nearest pitch (layer only; source unchanged)": "有効なノートを最寄りの音程にスナップしました（レイヤーのみ、原音は不変）", "Stage reset to defaults": "ステージを初期値にリセットしました", "Could not load the MP3 encoder. Please export as WAV.": "MP3エンコーダを読み込めませんでした。WAVで書き出してください。", "Importing Audio": "音声を読み込み中", "Queued": "待機中", "Loaded": "読み込み完了", "Could not load": "読み込めませんでした", "Close": "閉じる", "The full-screen editor is not available on this page": "このページでは全画面エディターは使えません", "Back from the pitch editor — edits applied to the layer": "ピッチエディターから戻りました — 編集をレイヤーに反映しました", "Back from the pitch editor — project restored": "ピッチエディターから戻りました — プロジェクトを復元しました", "Back from the export page — project restored": "書き出しページから戻りました — プロジェクトを復元しました", "↩ Undo": "↩ 元に戻す", "↪ Redo": "↪ やり直し", "Project restored from autosave": "自動保存からプロジェクトを復元しました", "⚙ Params": "⚙ パラメータ", "Crossfade with Next": "次のクリップとクロスフェード", "No next clip on this track": "このトラックに次のクリップがありません", "Clips do not touch — move the next clip against this one first": "クリップが接していません — 次のクリップをくっつけてから実行してください", "Crossfade too short": "クロスフェードが短すぎます", "De-Esser": "ディエッサー", "Frequency": "周波数", "Standard": "標準", "Gentle": "弱め", "Strong Sibilance": "強い歯擦音", "High & Bright": "高域・明るめ", "Limiter": "リミッター", "Ducker (Sidechain)": "ダッカー（サイドチェイン）", "Key Source": "キーソース", "— None —": "— なし —", "This track ducks when the key track plays": "キートラックが鳴るとこのトラックが下がります", "Depth": "深さ", "No key selected": "キーが未選択です", "Vocal over Backing": "ボーカル優先", "Gentle Glue": "軽いグルー", "Pump": "パンピング", "Normalize": "ノーマライズ", "Measure Loudness": "ラウドネス測定", "Snapshots": "スナップショット", "Fade In Curve": "フェードイン曲線", "Fade Out Curve": "フェードアウト曲線", "Linear": "リニア", "Equal Power": "等パワー", "S-Curve": "S字曲線", "Noise Gate": "ノイズゲート", "Vocal Gate": "ボーカルゲート", "Tight (Noisy Room)": "タイト（ノイズの多い部屋）", "Gentle Expander": "緩やかなエキスパンダー", "Range": "レンジ", "Metronome ON": "メトロノーム ON", "Metronome OFF": "メトロノーム OFF", "Count-in…": "カウントイン…", "Clip is silent — nothing to normalize": "クリップが無音です — ノーマライズできません", "Tail Fade": "曲尾フェード", "Custom (export.tailfade parameter)": "カスタム（export.tailfade パラメータ）", "Loudness Report (.txt)": "ラウドネスレポート（.txt）", "Saturation": "サチュレーション", "Subtle Warmth": "ほのかな温かみ", "Tape": "テープ", "Tube Grit": "チューブの粗さ", "Ping-Pong Delay": "ピンポンディレイ", "8th Ping-Pong": "8分ピンポン", "Wide & Long": "ワイド＆ロング", "Drive": "ドライブ", "Chorus": "コーラス", "Flanger": "フランジャー", "Phaser": "フェイザー", "Stereo Widener": "ステレオワイドナー", "Exciter": "エキサイター", "Hum Removal": "ハム除去", "Clarity Boost": "明瞭度ブースト", "Gentle Chorus": "穏やかなコーラス", "Lush": "ラッシュ", "Doubling": "ダブリング", "Classic Flanger": "定番フランジャー", "Jet": "ジェット", "Subtle Sweep": "控えめなスイープ", "Classic Phaser": "定番フェイザー", "Slow Sweep": "遅いスイープ", "Vocal Swirl": "ボーカルスワール", "Mild Width": "控えめな広がり", "Extra Wide": "特大ワイド", "Mono": "モノラル", "Gentle Air": "穏やかなエア", "Presence": "プレゼンス", "Strong": "強め", "Clarity": "明瞭", "Soft": "ソフト", "Rate": "レート", "Width": "幅", "Amount": "量", "Fundamental": "基音", "Split at Silence": "無音で分割", "Strip Silence": "無音を取り除く", "Reverse": "リバース", "Forward": "通常再生", "Glue with Next": "次のクリップと接着", "Keyboard Shortcuts": "キーボードショートカット", "No silence found": "無音が見つかりません", "No next clip to glue": "接着する次のクリップがありません", "Glued into one clip": "1つのクリップに接着しました", "Clip reversed": "クリップをリバースしました", "Clip forward": "クリップを通常再生に戻しました", "Snapshot storage is full — delete one first": "スナップショットがいっぱいです — 先に1つ削除してください", "Snapshots are not available here": "ここではスナップショットは使えません", "Microphone recording is not supported in this browser": "このブラウザではマイク録音に対応していません", "Nothing was recorded": "何も録音されませんでした", "Recording…": "録音中…", "Custom (loudness.target parameter)": "カスタム（loudness.target パラメータ）", "Back from the manual — project restored": "マニュアルから戻りました — プロジェクトを復元しました", "Rendering…": "書き出し中…", "Audio flows from the top stage down. Each stage is an independent unit; summaries always show here.": "音は上のステージから下へ流れます。各ステージは独立したユニットで、要約は常にここに表示されます。", "Click a block to select it; drag up / down to correct in semitones. \"Note ON/OFF\" returns a single note to the original.": "ブロックをクリックで選択し、上下ドラッグで半音単位に補正します。「ノート ON/OFF」は1つのノートだけを原音に戻します。", "Clips / Mixer — Independent Units (Stage 3)": "クリップ／ミキサー — 独立ユニット", "Collapse unused stages with \"Collapse\" in the stage header to hide their parameters. The chain always shows each stage's summary, so the state stays visible while collapsed.": "使わないステージはヘッダーの「折りたたむ」でパラメータを隠せます。チェーンには各ステージの要約が常に出るので、たたんでも状態は見えます。", "Compressor — Full Control": "コンプレッサー — フルコントロール", "Correction applies to playback and export. It targets monophonic singing only (no chords, overlapping sources, or time stretching).": "補正は再生と書き出しに反映されます。対象は単音の歌声のみです（和音・重なった音源・タイムストレッチは対象外）。", "Correction is never baked into the source. Playback and export derive it from source + layer each time. Turn the layer OFF for the original instantly; deleting it still keeps the source.": "補正が原音に焼き込まれることはありません。再生と書き出しは毎回、原音＋レイヤーから導出します。レイヤーを OFF にすれば即座に原音に戻り、削除しても原音は残ります。", "Dashed = detected position; solid blocks = corrected position (strength applied). Gray = disabled notes; when the layer is OFF, everything is gray.": "破線＝検出位置、実ブロック＝補正後（強さ適用済み）。グレー＝無効化したノート。レイヤー OFF のときは全部グレーになります。", "Each stage has presets (EQ \"Vocal Basic\" and \"De-Mud\", Compressor \"Cover Standard\", and more). You can also save the current settings under a name (saved for this session only).": "各ステージにはプリセットがあります（EQ の「ボーカル基本」「こもり解消」、コンプレッサーの「歌ってみた標準」など）。現在の設定に名前を付けて保存もできます（このセッション内のみ）。", "Edits change parameters only; the source audio is never rewritten. Summaries keep the state visible while collapsed.": "編集はパラメータのみで、原音は書き換わりません。折りたたんでも要約で状態が見えます。", "Effects — Each Stage in the Serial Chain Is Independent": "エフェクト — 直列チェーンの各ステージは独立しています", "Even if you split / trim the clip after analysis, the layer carries over in buffer-time coordinates.": "解析後にクリップを分割／トリムしても、レイヤーはバッファ時間の座標で引き継がれます。", "How It Works — the Non-Destructive Design (collapse / expand)": "仕組み — 非破壊の設計（折りたたみ／展開）", "No voiced notes were detected. The audio may be too quiet or not monophonic. The source audio remains untouched.": "有声ノートが検出されませんでした。音が小さすぎるか、単音でない可能性があります。原音はそのまま残っています。", "Not analyzed yet. Run \"Analyze Pitch\" to detect notes and create this layer (the source stays untouched).": "まだ解析していません。「ピッチ解析」を実行するとノートを検出してこのレイヤーを作ります（原音には触れません）。", "Parametric EQ — drag handles (horizontal = frequency / vertical = gain), wheel for Q": "パラメトリックEQ — ハンドルをドラッグ（横＝周波数／縦＝ゲイン）、ホイールで Q", "Pitch Correction — Non-Destructive Layer": "ピッチ補正 — 非破壊レイヤー", "Press \"Analyze Pitch\" to detect pitch with the YIN method and show it as notes (blocks). Drag blocks up or down to correct in semitones, or use \"Snap to Nearest Note\" to pull all notes to the nearest pitch. Correction only layers on top; the source is never rewritten.": "「ピッチ解析」を押すと YIN 法で音程を検出し、ノート（ブロック）として表示します。ブロックを上下にドラッグして半音単位で補正するか、「最寄りの音にスナップ」で全ノートを最寄りの音程へ寄せます。補正は上に重ねるだけで、原音は書き換わりません。", "Select a clip on the timeline first. For monophonic vocal / harmony tracks (not for chords or overlapping sources).": "先にタイムラインでクリップを選んでください。単音のボーカル／ハモリ向けです（和音や重なった音源には使えません）。", "Select a stage from the list to edit its parameters here. Each stage is independent: ON/OFF, reorder, per-stage presets, duplicate and collapse.": "リストからステージを選ぶと、ここでパラメータを編集できます。各ステージは独立していて、ON/OFF・並び替え・段別プリセット・複製・折りたたみができます。", "Sends feed the return reverb / delay. Route several tracks to a bus to process them together.": "センドはリターンのリバーブ／ディレイへ送ります。複数トラックをバスへまとめると一括で処理できます。", "There are whole-mixer presets too (Cover Standard / Vocal Up Front / Dry, etc.). You can also save the current mix under a name (saved for this session only).": "ミキサー全体のプリセットもあります（歌ってみた標準／ボーカル前面／ドライ等）。現在のミックスに名前を付けて保存もできます（このセッション内のみ）。", "This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.": "このクリップはオケ／楽器トラックのものです。ピッチ補正は単音ボーカル向けの設計です。", "Re-analyze (rebuild layer)": "再解析（レイヤーを再構築）", "OFF — plays source": "OFF — 原音を再生", "Natural 60%": "ナチュラル 60%", "Standard 85%": "スタンダード 85%", "Full 100%": "フル 100%", "Pulls notes 60% of the way. Keeps vibrato and nuance.": "ノートを目標の60%まで寄せます。ビブラートとニュアンスを残します。", "The cover-song standard. Tunes pitch without sounding mechanical.": "歌ってみたの標準。機械的に聞こえない範囲で音程を整えます。", "Pulls fully to the target pitch. Meant to be combined with snap.": "目標の音程まで完全に寄せます。スナップとの併用が前提です。", "New bus name": "バス名を入力"};
   var ENR = {}; Object.keys(JA).forEach(function(k){ ENR[JA[k]] = k; });
   var PAT = [
     [/^Crossfade: ([\d.]+) s \(equal power\)$/, "クロスフェード: $1 秒（等パワー）"],
