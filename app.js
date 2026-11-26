@@ -2035,6 +2035,17 @@ function raf(){
     if(typeof orig!=="function") return;
     window[name]=function(){ var r=orig.apply(this, arguments); scheduleHistory(); return r; };
   });
+  /* Many controls (channel / FX sliders, typed entry) mutate state on
+     'input' WITHOUT re-rendering, so renders alone miss them. Watch
+     control events too, plus a slow poll as a backstop for pointer
+     gestures that neither render nor fire input events. */
+  document.addEventListener("input", function(e){
+    if(e.target && (e.target.type==="range" || e.target.type==="number" || e.target.type==="text")) scheduleHistory();
+  });
+  document.addEventListener("change", function(e){
+    if(e.target && e.target.closest && e.target.closest(".app")) scheduleHistory();
+  });
+  setInterval(function(){ checkHistory(); }, 3000);
   function doUndo(){
     if(!undoStack.length) return;
     redoStack.push(baseline);
