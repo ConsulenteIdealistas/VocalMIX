@@ -4906,12 +4906,19 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
       info.textContent=rec.name+" · "+d.getMonth()+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+" · "+rec.tracks+(ja()?" トラック":" tracks");
       const lb=document.createElement("button"); lb.textContent=ja()?"読込":"Load";
       lb.addEventListener("click",async function(){ await snapLoad(rec.name); refresh(); });
-      const db2=document.createElement("button"); db2.className="ghost"; db2.textContent="✕";
+      const db2=document.createElement("button"); db2.className="delbtn"; db2.textContent=ja()?"削除":"Delete";
+      let armed=false, armTimer=null;
       db2.addEventListener("click",async function(){
+        if(!armed){
+          armed=true; db2.classList.add("confirm"); db2.textContent=ja()?"本当に削除":"Sure?";
+          armTimer=setTimeout(function(){ armed=false; db2.classList.remove("confirm"); db2.textContent=ja()?"削除":"Delete"; }, 3000);
+          return;
+        }
+        clearTimeout(armTimer);
         row.style.opacity="0.35"; db2.disabled=true;
         const nl=await snapDelete(rec.name);
         if(Array.isArray(nl)) refresh(nl);
-        else{ row.style.opacity=""; db2.disabled=false; refresh(); }
+        else{ row.style.opacity=""; db2.disabled=false; db2.classList.remove("confirm"); db2.textContent=ja()?"削除":"Delete"; armed=false; refresh(); }
       });
       row.appendChild(info); row.appendChild(lb); row.appendChild(db2);
       listEl.appendChild(row);
