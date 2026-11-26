@@ -639,15 +639,23 @@ function fxNodes(ctx,fx){
     inp.connect(duck); duck.connect(out);
     parts.duck=duck; parts.keyIn=keyIn; parts.lpA=lpA; parts.lpR=lpR; parts.shaper=shaper;
   }else if(fx.type==="mbcomp"){
-    /* Linkwitz-Riley style crossovers (two cascaded Butterworth
-       stages per edge, Q = 0.707): the low path is LP(200), the
-       high path HP(2000), and the mid is LP(2000) into HP(200) -
-       a real bandpass. A subtractive mid (dry - low - high) was
-       tried first and failed: biquad phase rotation leaves as
-       much low energy in the "residual" as in the low band
-       itself, out of phase, so compressing the low band changed
-       nothing at the sum. LR bands are phase-coherent and each
-       band genuinely owns its range. */
+    /* Cascaded two-way LR splits (200 Hz, then the HP remainder
+       split at 2000 Hz); filter pairs are cascaded biquads with
+       Q = 0.707. Topology history, all measured by the core test
+       suite (2026-11-26): the original parallel bank and this
+       cascade both sum about +3 dB hot near the band edges at
+       unity, because the Web Audio biquad lowpass itself humps
+       +1.1 dB at half its cutoff per section (the node's own
+       getFrequencyResponse says so - it is the spec response,
+       not a plain Butterworth), so no biquad LR bank sums flat.
+       A complement cascade (mid = x - low - high) DID sum flat
+       at unity, but its residue carries the low band's
+       phase-rotated energy, so compressing a band barely moved
+       the sum. This cascade is kept because band isolation is
+       exact: compressing the low band moved 100 Hz by -8 dB and
+       1 kHz not at all (relative to the stage's own unity run);
+       the unity coloration is pinned as a known baseline in
+       test_dsp.py. */
     const mkC=thr=>{ const c=ctx.createDynamicsCompressor(); c.threshold.value=thr; c.ratio.value=fx.ratio;
       c.attack.value=0.01; c.release.value=0.18; c.knee.value=6; return c; };
     const pair=(type,f)=>{ const a=ctx.createBiquadFilter(); a.type=type; a.frequency.value=f; a.Q.value=0.707;
@@ -655,12 +663,12 @@ function fxNodes(ctx,fx){
       a.connect(b); return {inp:a, out:b}; };
     const cLo=mkC(fx.thrLo), cMid=mkC(fx.thrMid), cHi=mkC(fx.thrHi);
     const mk=ctx.createGain(); mk.gain.value=db2lin(fx.makeup);
-    const lpLo=pair("lowpass",200);
+    const lpLo=pair("lowpass",200), hpLo=pair("highpass",200);
     inp.connect(lpLo.inp); lpLo.out.connect(cLo); cLo.connect(mk);
-    const lpMid=pair("lowpass",2000), hpMid=pair("highpass",200);
-    inp.connect(lpMid.inp); lpMid.out.connect(hpMid.inp); hpMid.out.connect(cMid); cMid.connect(mk);
-    const hpHi=pair("highpass",2000);
-    inp.connect(hpHi.inp); hpHi.out.connect(cHi); cHi.connect(mk);
+    inp.connect(hpLo.inp);
+    const lpMid=pair("lowpass",2000), hpHi=pair("highpass",2000);
+    hpLo.out.connect(lpMid.inp); lpMid.out.connect(cMid); cMid.connect(mk);
+    hpLo.out.connect(hpHi.inp); hpHi.out.connect(cHi); cHi.connect(mk);
     mk.connect(out);
     parts.cLo=cLo; parts.cMid=cMid; parts.cHi=cHi; parts.mk=mk;
   }else if(fx.type==="dyneq"){
