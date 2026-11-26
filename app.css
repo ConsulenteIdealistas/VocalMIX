@@ -567,3 +567,7 @@ body.dropping::after{ content:"Drop audio files to import"; position:fixed; inse
 #keysPanel{ position:fixed; top:60px; right:14px; z-index:210; max-width:min(430px,92vw); max-height:80vh; overflow:auto;
   background:var(--panel); color:var(--tx); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
   box-shadow:0 12px 40px rgba(0,0,0,.35); font-size:13px; }
+
+#histPanel{ position:fixed; top:60px; right:14px; z-index:210; max-width:min(430px,92vw); max-height:80vh; overflow:auto;
+  background:var(--panel); color:var(--tx); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35); font-size:13px; }

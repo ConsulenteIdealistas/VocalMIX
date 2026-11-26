@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
-    <link rel="stylesheet" href="app.css?v=bcce6c19be">
+    <link rel="stylesheet" href="app.css?v=2f592de415">
     
     
   
@@ -31,6 +31,7 @@
           <button class="tbtn rec" id="btnRec" title="Record from microphone (R)">●</button>
           <button class="tbtn" id="btnMetro" title="Metronome / count-in">♩</button>
           <button class="tbtn" id="btnMark" title="Add marker at playhead">⚑</button>
+          <button class="tbtn" id="btnPunch" title="Punch-in recording (trims takes to the loop range)">◉</button>
         </div>
         <div class="timebox">
           <div class="big" id="timeBig">0:00.000</div>
@@ -39,6 +40,9 @@
         <div class="grp">
           <label for="bpmIn">BPM</label>
           <input type="number" id="bpmIn" value="120" min="40" max="240" step="1" style="width:64px">
+          <label for="speedSel">Speed</label>
+          <select id="speedSel"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option></select>
+          <button class="tbtn" id="btnTap" title="Tap tempo">Tap</button>
         </div>
         <div class="grp">
           <div class="meterwrap" title="Master level"><div class="meter"><i id="mL"></i></div><div class="meter"><i id="mR"></i></div></div>
@@ -54,6 +58,7 @@
           <a class="navlink" id="btnManualGo" href="manual.html">Manual</a>
           <button id="btnParams" class="ghost">⚙ Params</button>
           <button id="btnSnaps" class="ghost">Snapshots</button>
+          <button id="btnHist" class="ghost">History</button>
         </div>
       </div>
 
@@ -147,7 +152,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=189412962c"></script>
+<script src="app.js?v=09bbe86ec0"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
