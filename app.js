@@ -1,4 +1,4 @@
-window.VM_BUILD="815f9eb";
+window.VM_BUILD="27900fe";
 
 "use strict";
 /* ============================================================
@@ -2253,8 +2253,11 @@ lanesEl.addEventListener("contextmenu",e=>{ if(S.autoMode!=="off") e.preventDefa
    Inspector
    ============================================================ */
 let curTab="ch";
+function hideToast(){ const t=$("#toast"); if(!t) return; t.style.display="none"; clearTimeout(t._h);
+  if(t._armed){ t._armed=false; document.removeEventListener("pointerdown",hideToast,true); } }
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display="block";
-  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2600); }
+  clearTimeout(t._h); t._h=setTimeout(hideToast,2600);
+  if(!t._armed){ t._armed=true; document.addEventListener("pointerdown",hideToast,true); } }
 function renderInspector(){
   $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===curTab));
   const body=$("#tabBody");

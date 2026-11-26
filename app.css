@@ -361,7 +361,7 @@
       .clip.sel{outline:2px solid #ece2cd}
       .playhead{border-left:2px solid #c05a4c}
       .playhead::before{border-top-color:#c05a4c}
-      .toast{border:1px solid var(--line);border-radius:6px;letter-spacing:normal;box-shadow:var(--shadow)}
+      .toast{border:1px solid var(--line);border-radius:6px;letter-spacing:.03em;box-shadow:var(--shadow);font-family:var(--sans-ui)}
       .dropveil{border-color:var(--acc);background:rgba(18,10,13,.65);font-family:inherit;letter-spacing:normal}
       :focus-visible{outline:2px solid rgba(168,137,78,.85);outline-offset:1px}
       .sect h3,.fxeditor h3,.manual h2,.manual h3,.confirmbox h2,.pitchwrap h3{font-family:inherit;letter-spacing:.06em;color:var(--tx2)}
