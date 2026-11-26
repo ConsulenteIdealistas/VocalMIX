@@ -551,3 +551,11 @@ output{cursor:pointer;border-bottom:1px dotted var(--line,#4a3540)}
 .cmdout{color:var(--tx3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38%}
 .limchip{border:1px solid var(--line2);background:transparent;color:var(--tx3);border-radius:999px;padding:2px 10px;font-size:11px;min-height:26px;cursor:pointer}
 .limchip.on{background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700}
+.snappanel{width:330px;max-width:92vw}
+.snapnew{display:flex;gap:6px;margin-bottom:8px}
+.snapnew input{flex:1}
+.snaprow{display:flex;gap:6px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.snapinfo{flex:1;font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbtn.rec{color:#e5484d}
+.tbtn.rec.recording{background:#e5484d;color:#fff;animation:recpulse 1.2s ease-in-out infinite}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.45}}

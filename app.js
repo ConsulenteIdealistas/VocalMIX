@@ -18,6 +18,7 @@ const TYPES={inst:{label:"Backing",color:"#a8433a",badge:"#86322b"},
 const S={
   ctx:null, master:null, masterComp:null, analyser:null,
   limiter:{on:true, ceiling:-1}, limiterNodes:null,
+  masterVolSaved:"0",
   bpm:120, playing:false, playCtxStart:0, playPosStart:0, pos:0,
   tracks:[], buses:[], sources:[],
   selTrack:null, selClip:null, selFx:-1,
@@ -164,6 +165,23 @@ function duplicateClip(tr,cl){
   toast("Clip duplicated (source buffer is shared = non-destructive)");
   return nc;
 }
+function dupTrack(tr){
+  const c={ id:nid(), name:tr.name+" copy", type:tr.type, color:tr.color,
+    clips: tr.clips.map(function(cl){ const rest={}; Object.keys(cl).forEach(function(k){ if(k!=="buffer") rest[k]=cl[k]; });
+      const nc=JSON.parse(JSON.stringify(rest)); nc.id=nid(); nc.buffer=cl.buffer; return nc; }),
+    vol:tr.vol, pan:tr.pan, mute:tr.mute, solo:tr.solo, bus:tr.bus,
+    sendRev:tr.sendRev, sendDly:tr.sendDly,
+    fx: JSON.parse(JSON.stringify(tr.fx)),
+    auto: JSON.parse(JSON.stringify(tr.auto)), nodes:null };
+  const at=S.tracks.indexOf(tr);
+  S.tracks.splice(at+1,0,c);
+  if(S.ctx) buildTrackGraph(c);
+  S.selTrack=c.id; S.selClip=null;
+  renderTimeline(); renderInspector();
+  toast("Track duplicated: "+c.name);
+  return c;
+}
+
 /* --- Mixer presets (built-ins that act per track type + whole-mix snapshot save) --- */
 function applyMixLiveAll(){
   if(!S.ctx) return; const t=S.ctx.currentTime;
@@ -273,12 +291,22 @@ function applyLimiterLive(){
   if(chip) chip.classList.toggle("on", !!(S.limiter&&S.limiter.on));
 }
 
+/* The master volume lives in the top-bar slider on the main page,
+   but the export page strips that element; fall back to the value
+   the handoff saved into the project (S.masterVolSaved). */
+function masterVolValue(){
+  const el=document.querySelector("#masterVol");
+  if(el) return parseFloat(el.value);
+  const v=parseFloat(S.masterVolSaved);
+  return isFinite(v)?v:0;
+}
+
 /* ---------- audio engine ---------- */
 function ensureCtx(){
   if(S.ctx) { if(S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
   const ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
   S.ctx=ctx;
-  S.master=ctx.createGain(); S.master.gain.value=db2lin(parseFloat($("#masterVol").value));
+  S.master=ctx.createGain(); S.master.gain.value=db2lin(masterVolValue());
   S.masterComp=ctx.createDynamicsCompressor();
   S.masterComp.threshold.value=-3; S.masterComp.ratio.value=12; S.masterComp.attack.value=0.002; S.masterComp.release.value=0.18; S.masterComp.knee.value=4;
   S.analyser=ctx.createAnalyser(); S.analyser.fftSize=256;
@@ -1489,12 +1517,24 @@ function expHTML(){
   <div class="fld"><label>Sample Rate</label><select id="expSr"><option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz</option></select></div>
   <div class="fld"><label>Bit Depth</label><select id="expBits"><option value="16">16 bit</option><option value="24" selected>24 bit</option></select><span class="small">WAV only</span></div>
   <div class="fld"><label>File Name</label><input type="text" id="expName" value="utattemita_mix" style="width:180px"></div>
+  <div class="fld"><label>Normalize</label><select id="expNorm"><option value="off">Off</option><option value="-14">YouTube / Spotify (-14 LUFS)</option><option value="-15">niconico (-15 LUFS)</option><option value="-16">Apple Music / Podcast (-16 LUFS)</option><option value="param">Custom (loudness.target parameter)</option></select></div>
+  <div class="fld"><button id="btnMeasure" class="ghost">Measure Loudness</button><span class="small" id="loudStat"></span></div>
   <div class="fld"><button id="btnDoExport" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700;padding:6px 18px">Export</button>
   <span class="small" id="expStat">Length ${fmtT(projectEnd())} / ${S.tracks.length} tracks (mute / solo states apply)</span></div>
   <p class="small">Renders the whole project offline. Insert FX, sends / returns, buses, automation and fades are all included.</p>
   </div></div>`;
 }
 function wireExp(){ const b=$("#btnDoExport"); if(b) b.onclick=doExport;
+  const mb=$("#btnMeasure"); if(mb) mb.onclick=async()=>{
+    if(!S.tracks.length){ $("#expStat").textContent="No tracks to measure."; return; }
+    mb.disabled=true; $("#expStat").textContent="Rendering for measurement…";
+    try{
+      const buf=await renderMix(parseInt($("#expSr").value), projectEnd());
+      reportLoudness(buf);
+      $("#expStat").textContent="Measured (no file written).";
+    }catch(err){ $("#expStat").textContent="Measure failed: "+err.message; }
+    mb.disabled=false;
+  };
   const go=$("#btnExportGo"); }
 
 /* ----- User manual ----- */
@@ -1539,6 +1579,10 @@ function manualHTML(){
     <li>Drag clips to move them; drag either edge to trim. Select a clip and press <span class="kbd">S</span> to split, <span class="kbd">Del</span> to delete.</li>
         <li>Crossfade: select the left of two touching clips and use "Crossfade with Next" in the clip editor (equal-power curves). Its default length is the xfade.sec parameter.</li>
         <li>Power tools: ⚙ Params edits the app's tunable values; on a keyboard, press ":" for the command bar (try "help"; targets accept /regex/).</li>
+        <li>Home-position keys: Space play/pause, S split, J/K select track, H/L seek (Shift = 5 s), M mute, O solo, U undo (Shift+U redo), D duplicate, 1–4 switch tabs, +/− zoom, Enter play from the top.</li>
+        <li>Command bar extras: tab, zoom, seek (seconds, 1:30, or "bar n"), bpm, master, limiter on/off, loop (seconds or "bars a b"), addtrack, dup, rename, export, pitch.</li>
+        <li>Snapshots: the Snapshots button (or "snap save &lt;name&gt;") stores the whole project under a name in this browser; load or delete from the same panel. Unlike autosave, snapshots are kept until you delete them.</li>
+        <li>Recording: press ● (or the R key, or "rec") to record from the microphone along with playback; stopping drops the take onto a new track at the playhead. Use headphones. rec.offsetMs compensates interface latency; mic processing stays off unless rec.processing is set to 1.</li>
     <li>The Effects tab adjusts EQ, compressor, reverb and delay per track, and the chain order can be rearranged.</li>
     <li>Switching the toolbar's Automation mode lets you draw volume / pan for the selected track on the timeline (click to add a point, right-click to delete).</li>
     <li>When finished, export as WAV / MP3 from the Export button at the top (48 kHz / 24 bit available).</li>
@@ -1551,6 +1595,105 @@ function requestDemoLoad(){
   if(!S.tracks.length){ buildDemoProject(); return; }
   const dc=$("#demoConfirm"); if(dc) dc.hidden=false;
 }
+/* ----- Loudness (ITU-R BS.1770 integrated, K-weighted, gated) ----- */
+function kWeight(fs){
+  const f1=1681.974450955533, G=3.999843853973347, Q1=0.7071752369554196;
+  const K1=Math.tan(Math.PI*f1/fs), Vh=Math.pow(10,G/20), Vb=Math.pow(Vh,0.4996667741545416);
+  const a01=1+K1/Q1+K1*K1;
+  const s1={b:[(Vh+Vb*K1/Q1+K1*K1)/a01, 2*(K1*K1-Vh)/a01, (Vh-Vb*K1/Q1+K1*K1)/a01],
+            a:[1, 2*(K1*K1-1)/a01, (1-K1/Q1+K1*K1)/a01]};
+  const f2=38.13547087602444, Q2=0.5003270373238773;
+  const K2=Math.tan(Math.PI*f2/fs), a02=1+K2/Q2+K2*K2;
+  const s2={b:[1/a02, -2/a02, 1/a02], a:[1, 2*(K2*K2-1)/a02, (1-K2/Q2+K2*K2)/a02]};
+  return [s1,s2];
+}
+function applyBiquad(d,f){
+  const out=new Float32Array(d.length);
+  let x1=0,x2=0,y1=0,y2=0;
+  const b0=f.b[0],b1=f.b[1],b2=f.b[2],a1=f.a[1],a2=f.a[2];
+  for(let i=0;i<d.length;i++){ const x=d[i], y=b0*x+b1*x1+b2*x2-a1*y1-a2*y2; out[i]=y; x2=x1; x1=x; y2=y1; y1=y; }
+  return out;
+}
+function measureLoudness(buf){
+  const fs=buf.sampleRate, nCh=Math.min(2,buf.numberOfChannels);
+  const [s1,s2]=kWeight(fs);
+  const cums=[]; let peak=0;
+  for(let c=0;c<nCh;c++){
+    let d=Float32Array.from(buf.getChannelData(c));
+    for(let i=0;i<d.length;i++){ const a=Math.abs(d[i]); if(a>peak) peak=a; }
+    d=applyBiquad(applyBiquad(d,s1),s2);
+    const cum=new Float64Array(d.length+1);
+    for(let i=0;i<d.length;i++) cum[i+1]=cum[i]+d[i]*d[i];
+    cums.push(cum);
+  }
+  const len=buf.length, blockLen=Math.round(fs*0.4), hop=Math.round(fs*0.1);
+  if(len<blockLen) return {integrated:-Infinity, peak};
+  const zs=[];
+  for(let st=0; st+blockLen<=len; st+=hop){
+    let z=0;
+    for(let c=0;c<nCh;c++) z+=(cums[c][st+blockLen]-cums[c][st])/blockLen;
+    zs.push(z);
+  }
+  const toLoud=z=>-0.691+10*Math.log10(z);
+  const abs=zs.filter(z=>toLoud(z)>-70);
+  if(!abs.length) return {integrated:-Infinity, peak};
+  const meanAbs=abs.reduce((a,b)=>a+b,0)/abs.length;
+  const rel=abs.filter(z=>z>meanAbs*0.1);
+  const meanRel=rel.reduce((a,b)=>a+b,0)/rel.length;
+  return {integrated:toLoud(meanRel), peak};
+}
+function reportLoudness(buf){
+  const loud=measureLoudness(buf);
+  const el=$("#loudStat");
+  if(el) el.textContent="Integrated loudness: "+(isFinite(loud.integrated)?loud.integrated.toFixed(1)+" LUFS":"— (silence)")+
+    " · Peak: "+(loud.peak>0?(20*Math.log10(loud.peak)).toFixed(1)+" dB":"—");
+  return loud;
+}
+
+async function renderMix(sr,dur){
+  const oc=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
+  const master=oc.createGain(); master.gain.value=db2lin(masterVolValue());
+  const mcomp=oc.createDynamicsCompressor(); mcomp.threshold.value=-3;mcomp.ratio.value=12;mcomp.attack.value=0.002;mcomp.release.value=0.18;
+  const mlim=makeLimiterNodes(oc); configureLimiter(mlim,S.limiter);
+  master.connect(mcomp); mcomp.connect(mlim.input); mlim.output.connect(oc.destination);
+  const R=buildReturns(oc,master,false);
+  if(S.returns){ R.conv.buffer=makeIR(oc,S.returns.decay); R.dly.delayTime.value=S.returns.dlyTime; R.fb.gain.value=S.returns.dlyFb; }
+  if(S.revMuted) R.revOut.gain.value=0; if(S.dlyMuted) R.dlyOut.gain.value=0;
+  const busNodes={};
+  S.buses.forEach(b=>{ const input=oc.createGain(),g=oc.createGain(),p=oc.createStereoPanner();
+    input.connect(g);g.connect(p);p.connect(master); g.gain.value=b.muted?0:db2lin(b.vol); p.pan.value=b.pan||0; busNodes[b.id]=input; });
+  const anySolo=S.tracks.some(t=>t.solo);
+  const keyTaps={}, pendingKeys=[];
+  S.tracks.forEach(tr=>{ keyTaps[tr.id]=oc.createGain(); });
+  S.tracks.forEach(tr=>{
+    const input=oc.createGain(); input.connect(keyTaps[tr.id]); let prev=input;
+    tr.fx.forEach(fx=>{ const n=fxNodes(oc,fx); prev.connect(n.input); prev=n.output;
+      if(n.parts&&n.parts.keyIn) pendingKeys.push({keyIn:n.parts.keyIn, key:fx.key}); });
+    const autoG=oc.createGain(), autoP=oc.createStereoPanner(), fader=oc.createGain(), pan=oc.createStereoPanner();
+    prev.connect(autoG); autoG.connect(autoP); autoP.connect(fader); fader.connect(pan);
+    pan.connect(tr.bus&&busNodes[tr.bus]?busNodes[tr.bus]:master);
+    const sR=oc.createGain(), sD=oc.createGain(); fader.connect(sR); sR.connect(R.revIn); fader.connect(sD); sD.connect(R.dlyIn);
+    fader.gain.value=db2lin(tr.vol); pan.pan.value=tr.pan; sR.gain.value=tr.sendRev; sD.gain.value=tr.sendDly;
+    if(tr.auto.volume.length){ autoG.gain.setValueAtTime(db2lin(autoVal(tr.auto.volume,0,tr.vol)),0);
+      tr.auto.volume.forEach(p=>autoG.gain.linearRampToValueAtTime(db2lin(p.v),p.t)); }
+    if(tr.auto.pan.length){ autoP.pan.setValueAtTime(autoVal(tr.auto.pan,0,0),0);
+      tr.auto.pan.forEach(p=>autoP.pan.linearRampToValueAtTime(p.v,p.t)); }
+    if(tr.mute||(anySolo&&!tr.solo)) return;
+    tr.clips.forEach(cl=>{ if(cl.muted) return; const src=oc.createBufferSource(); src.buffer=clipBuffer(cl);
+      const g=oc.createGain(); src.connect(g); g.connect(input);
+      const cg=db2lin(cl.gain||0), t0=cl.start;
+      if(cl.fadeIn>0&&cl.curveIn==="eqp") applyFade(g.gain,"in",cg,t0,cl.fadeIn,0);
+      else { g.gain.setValueAtTime(cl.fadeIn>0?0.0001:cg,t0); if(cl.fadeIn>0) g.gain.linearRampToValueAtTime(cg,t0+cl.fadeIn); }
+      if(cl.fadeOut>0){
+        if(cl.curveOut==="eqp") applyFade(g.gain,"out",cg,t0+cl.dur-cl.fadeOut,cl.fadeOut,0);
+        else { g.gain.setValueAtTime(cg,t0+cl.dur-cl.fadeOut); g.gain.linearRampToValueAtTime(0.0001,t0+cl.dur); }
+      }
+      src.start(t0,cl.offset,cl.dur); });
+  });
+  pendingKeys.forEach(pk=>{ const kt=keyTaps[pk.key]; if(kt&&pk.key) kt.connect(pk.keyIn); });
+  const buf=await oc.startRendering();
+  return buf;
+}
 async function doExport(){
   ensureCtx();
   const fmt=$("#expFmt").value, sr=parseInt($("#expSr").value), bits=parseInt($("#expBits").value);
@@ -1559,53 +1702,25 @@ async function doExport(){
   if(!S.tracks.length){ $("#expStat").textContent="No tracks to export."; return; }
   $("#expStat").textContent="Rendering…";
   try{
-    const oc=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
-    const master=oc.createGain(); master.gain.value=db2lin(parseFloat($("#masterVol").value));
-    const mcomp=oc.createDynamicsCompressor(); mcomp.threshold.value=-3;mcomp.ratio.value=12;mcomp.attack.value=0.002;mcomp.release.value=0.18;
-    const mlim=makeLimiterNodes(oc); configureLimiter(mlim,S.limiter);
-    master.connect(mcomp); mcomp.connect(mlim.input); mlim.output.connect(oc.destination);
-    const R=buildReturns(oc,master,false);
-    if(S.returns){ R.conv.buffer=makeIR(oc,S.returns.decay); R.dly.delayTime.value=S.returns.dlyTime; R.fb.gain.value=S.returns.dlyFb; }
-    if(S.revMuted) R.revOut.gain.value=0; if(S.dlyMuted) R.dlyOut.gain.value=0;
-    const busNodes={};
-    S.buses.forEach(b=>{ const input=oc.createGain(),g=oc.createGain(),p=oc.createStereoPanner();
-      input.connect(g);g.connect(p);p.connect(master); g.gain.value=b.muted?0:db2lin(b.vol); p.pan.value=b.pan||0; busNodes[b.id]=input; });
-    const anySolo=S.tracks.some(t=>t.solo);
-    const keyTaps={}, pendingKeys=[];
-    S.tracks.forEach(tr=>{ keyTaps[tr.id]=oc.createGain(); });
-    S.tracks.forEach(tr=>{
-      const input=oc.createGain(); input.connect(keyTaps[tr.id]); let prev=input;
-      tr.fx.forEach(fx=>{ const n=fxNodes(oc,fx); prev.connect(n.input); prev=n.output;
-        if(n.parts&&n.parts.keyIn) pendingKeys.push({keyIn:n.parts.keyIn, key:fx.key}); });
-      const autoG=oc.createGain(), autoP=oc.createStereoPanner(), fader=oc.createGain(), pan=oc.createStereoPanner();
-      prev.connect(autoG); autoG.connect(autoP); autoP.connect(fader); fader.connect(pan);
-      pan.connect(tr.bus&&busNodes[tr.bus]?busNodes[tr.bus]:master);
-      const sR=oc.createGain(), sD=oc.createGain(); fader.connect(sR); sR.connect(R.revIn); fader.connect(sD); sD.connect(R.dlyIn);
-      fader.gain.value=db2lin(tr.vol); pan.pan.value=tr.pan; sR.gain.value=tr.sendRev; sD.gain.value=tr.sendDly;
-      if(tr.auto.volume.length){ autoG.gain.setValueAtTime(db2lin(autoVal(tr.auto.volume,0,tr.vol)),0);
-        tr.auto.volume.forEach(p=>autoG.gain.linearRampToValueAtTime(db2lin(p.v),p.t)); }
-      if(tr.auto.pan.length){ autoP.pan.setValueAtTime(autoVal(tr.auto.pan,0,0),0);
-        tr.auto.pan.forEach(p=>autoP.pan.linearRampToValueAtTime(p.v,p.t)); }
-      if(tr.mute||(anySolo&&!tr.solo)) return;
-      tr.clips.forEach(cl=>{ if(cl.muted) return; const src=oc.createBufferSource(); src.buffer=clipBuffer(cl);
-        const g=oc.createGain(); src.connect(g); g.connect(input);
-        const cg=db2lin(cl.gain||0), t0=cl.start;
-        if(cl.fadeIn>0&&cl.curveIn==="eqp") applyFade(g.gain,"in",cg,t0,cl.fadeIn,0);
-        else { g.gain.setValueAtTime(cl.fadeIn>0?0.0001:cg,t0); if(cl.fadeIn>0) g.gain.linearRampToValueAtTime(cg,t0+cl.fadeIn); }
-        if(cl.fadeOut>0){
-          if(cl.curveOut==="eqp") applyFade(g.gain,"out",cg,t0+cl.dur-cl.fadeOut,cl.fadeOut,0);
-          else { g.gain.setValueAtTime(cg,t0+cl.dur-cl.fadeOut); g.gain.linearRampToValueAtTime(0.0001,t0+cl.dur); }
-        }
-        src.start(t0,cl.offset,cl.dur); });
-    });
-    pendingKeys.forEach(pk=>{ const kt=keyTaps[pk.key]; if(kt&&pk.key) kt.connect(pk.keyIn); });
-    const buf=await oc.startRendering();
+    const buf=await renderMix(sr,dur);
+    const loud=reportLoudness(buf);
+    let normNote="";
+    const normSel=$("#expNorm")?$("#expNorm").value:"off";
+    if(normSel!=="off"&&isFinite(loud.integrated)){
+      const target=normSel==="param"?P("loudness.target"):parseFloat(normSel);
+      let gainDb=target-loud.integrated;
+      const ceil=P("loudness.ceiling"), peakDb=20*Math.log10(Math.max(loud.peak,1e-6));
+      if(peakDb+gainDb>ceil) gainDb=ceil-peakDb;
+      const g=db2lin(gainDb);
+      for(let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for(let k=0;k<d.length;k++) d[k]*=g; }
+      normNote=" · Normalized "+(gainDb>=0?"+":"")+gainDb.toFixed(1)+" dB to "+target.toFixed(1)+" LUFS";
+    }
     let blob, ext;
     if(fmt==="wav"){ blob=encodeWav(buf,bits); ext="wav"; }
     else { blob=encodeMp3(buf); ext="mp3"; if(!blob){ $("#expStat").textContent="Could not load the MP3 encoder. Please export as WAV."; return; } }
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name+"."+ext; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-    $("#expStat").textContent="Export complete: "+name+"."+ext+" ("+(blob.size/1024).toFixed(0)+" KB)";
+    $("#expStat").textContent="Export complete: "+name+"."+ext+" ("+(blob.size/1024).toFixed(0)+" KB)"+normNote;
   }catch(err){ $("#expStat").textContent="Export failed: "+err.message; }
 }
 function encodeWav(buf,bits){
@@ -2114,6 +2229,25 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="s"||e.key==="S") splitSelected();
   else if(e.key==="Delete"||e.key==="Backspace") deleteSelected();
   else if(e.key==="Home") seek(0);
+  else if(!/(pitch|export|manual)\.html/.test(location.pathname)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    /* Home-position keys (main page): the frequent actions live on
+       and around the home row, no modifiers, no mouse travel. */
+    const k=e.key;
+    if(k==="j"||k==="k"){ const ts=S.tracks; if(ts.length){ let i=ts.findIndex(t=>t.id===S.selTrack);
+      i=(i+(k==="j"?1:-1)+ts.length)%ts.length; S.selTrack=ts[i].id; S.selClip=null; renderTimeline(); renderInspector(); } }
+    else if(k==="h"||k==="l"||k==="H"||k==="L"){ const d=(k.toLowerCase()==="h"?-1:1)*((k==="H"||k==="L")?5:1); seek(currentPos()+d); }
+    else if(k==="m"){ const tr=selTrackObj(); if(tr){ tr.mute=!tr.mute; renderTimeline(); renderInspector(); if(S.playing) startSources(currentPos()); } }
+    else if(k==="o"){ const tr=selTrackObj(); if(tr){ tr.solo=!tr.solo; renderTimeline(); renderInspector(); if(S.playing) startSources(currentPos()); } }
+    else if(k==="u"){ const b=document.querySelector("#btnUndo"); if(b) b.click(); }
+    else if(k==="U"){ const b=document.querySelector("#btnRedo"); if(b) b.click(); }
+    else if(k==="d"){ const fc=findClip(S.selClip); if(fc) duplicateClip(fc.tr,fc.cl);
+      else { const tr=selTrackObj(); if(tr) dupTrack(tr); } }
+    else if(k==="1"||k==="2"||k==="3"||k==="4"){ curTab=["ch","fx","pitch","mix"][+k-1]; renderInspector(); }
+    else if(k==="+"||k==="-"||k==="="){ S.px=clamp(Math.round(S.px*(k==="-"?0.8:1.25)),8,140);
+      const z=$("#zoomR"); if(z) z.value=S.px; renderTimeline(); }
+    else if(k==="r"){ recToggle(); }
+    else if(k==="Enter"){ seek(0); if(!S.playing) play(); }
+  }
 });
 window.addEventListener("resize",()=>{ renderTimeline(); if(curTab==="pitch") renderInspector(); });
 
@@ -2172,6 +2306,11 @@ const PARAM_DEFS={
   "deesser.freq":{def:6000, min:2000,  max:12000, step:50,  label:"De-esser frequency (Hz)", ja:"ディエッサー中心周波数（Hz）"},
   "limiter.ceiling":{def:-1, min:-12, max:0,   step:0.1,   label:"Limiter ceiling (dB)",  ja:"リミッターの天井（dB）"},
   "limiter.release":{def:120, min:10,  max:1000, step:5,   label:"Limiter release (ms)",  ja:"リミッターのリリース（ms）"},
+  "loudness.target":{def:-14, min:-24, max:-8,  step:0.5,   label:"Loudness target (LUFS)", ja:"ラウドネス目標（LUFS）"},
+  "loudness.ceiling":{def:-1, min:-6,  max:0,   step:0.1,   label:"Normalize peak ceiling (dB)", ja:"ノーマライズ時のピーク天井（dB）"},
+  "snap.max":    {def:20,   min:1,     max:100, step:1,     label:"Max named snapshots",   ja:"名前付きスナップショットの上限"},
+  "rec.offsetMs":{def:0,    min:-500,  max:500, step:1,     label:"Record latency offset (ms)", ja:"録音レイテンシ補正（ms）"},
+  "rec.processing":{def:0,  min:0,     max:1,   step:1,     label:"Mic processing (echo/noise/AGC) 0=off 1=on", ja:"マイク処理（エコー/ノイズ/AGC）0=切 1=入"},
 };
 let PARAMS={};
 try{ PARAMS=JSON.parse(localStorage.getItem("vocalmix-params")||"{}")||{}; }catch(e){ PARAMS={}; }
@@ -2277,7 +2416,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
     const parts=rest.split(/\s+/), verb=(parts[0]||"").toLowerCase(), args=parts.slice(1);
     const num=function(v){ const n=parseFloat(v); return isFinite(n)?n:null; };
     try{
-      if(verb==="help"){ say("set/get · sel /re/ · @/re/ vol|pan|mute|solo · vol · pan · gain · fadein · fadeout · xfade · undo · redo · play · stop · params"); return; }
+      if(verb==="help"){ say("Keys: Space S J/K H/L M O U D R 1-4 +- Enter · Cmds: set/get · sel /re/ · @/re/ vol|pan|mute|solo · tab · zoom · seek · bpm · master · limiter · loop · addtrack · dup · rename · snap · rec · export · pitch · gain · fadein · fadeout · xfade · undo · redo · play · stop · params"); return; }
       if(verb==="set"){ say(setParam(args[0],args[1])? args[0]+" = "+P(args[0]) : "Unknown param: "+args[0]); return; }
       if(verb==="get"){ const v=P(args[0]); say(v===undefined? "Unknown param: "+args[0] : args[0]+" = "+v); return; }
       if(verb==="params"){ if(window.VM_openParams) window.VM_openParams(); closeBar(); return; }
@@ -2291,6 +2430,104 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
         if(!tr){ say("No track matches"); return; }
         S.selTrack=tr.id; S.selClip=tr.clips.length?tr.clips[0].id:null;
         renderTimeline(); renderInspector(); say("Selected: "+tr.name); return;
+      }
+      if(verb==="rec"){
+        if(args[0]==="stop"){ if(REC.mr) REC.mr.stop(); else say("Not recording"); return; }
+        recToggle(); closeBar(); return;
+      }
+      if(verb==="snap"){
+        const sub=(args[0]||"").toLowerCase(), nm=args.slice(1).join(" ");
+        if(sub==="save"){ if(window.VM_snapSave) window.VM_snapSave(nm); else say("Snapshots are not available here"); return; }
+        if(sub==="load"){ if(window.VM_snapLoad) window.VM_snapLoad(nm); else say("Snapshots are not available here"); return; }
+        if(sub==="del"||sub==="delete"){ if(window.VM_snapDelete) window.VM_snapDelete(nm); else say("Snapshots are not available here"); return; }
+        if(sub==="list"||!sub){ if(window.VM_snapList) window.VM_snapList().then(function(l){
+          say(l.length? l.map(function(x){ return x.name; }).join(" · ") : "No snapshots"); });
+          else say("Snapshots are not available here"); return; }
+        say("snap: save|load|del|list <name>"); return;
+      }
+      if(verb==="tab"){
+        const map={"1":"ch","2":"fx","3":"pitch","4":"mix",ch:"ch",channel:"ch",fx:"fx",effects:"fx",pitch:"pitch",mix:"mix",mixer:"mix"};
+        const t=map[(args[0]||"").toLowerCase()]; if(!t){ say("tab: ch|fx|pitch|mix"); return; }
+        curTab=t; renderInspector(); say("Tab: "+t); return;
+      }
+      if(verb==="zoom"){
+        const a=args[0]||"+";
+        if(a==="+") S.px=clamp(Math.round(S.px*1.25),8,140);
+        else if(a==="-") S.px=clamp(Math.round(S.px*0.8),8,140);
+        else if(a==="reset") S.px=42;
+        else { const v=num(a); if(v===null){ say("zoom: +|-|reset|px"); return; } S.px=clamp(Math.round(v),8,140); }
+        const z=document.querySelector("#zoomR"); if(z) z.value=S.px;
+        renderTimeline(); say("Zoom "+S.px+" px/s"); return;
+      }
+      if(verb==="seek"){
+        const a=(args[0]||"").toLowerCase(); let v=null;
+        if(a==="start") v=0;
+        else if(a==="end") v=projectEnd();
+        else if(a==="bar"){ const b=num(args[1]); if(b!==null) v=Math.max(0,(b-1)*4*beatSec()); }
+        else { const mm=/^(\d+):([\d.]+)$/.exec(a); if(mm) v=parseInt(mm[1])*60+parseFloat(mm[2]); else v=num(a); }
+        if(v===null){ say("seek: <sec> | 1:30 | bar <n> | start | end"); return; }
+        seek(v); say("Seek "+fmtT(v)); return;
+      }
+      if(verb==="bpm"){
+        const v=num(args[0]); const bi=document.querySelector("#bpmIn");
+        if(v===null||!bi){ say("BPM "+S.bpm); return; }
+        bi.value=clamp(v,40,240); bi.dispatchEvent(new Event("change")); say("BPM "+S.bpm); return;
+      }
+      if(verb==="master"){
+        const v=num(args[0]); const mv=document.querySelector("#masterVol");
+        if(v===null||!mv){ say("master: "+(mv?mv.value:"?")+" dB"); return; }
+        mv.value=clamp(v,-40,6); mv.dispatchEvent(new Event("input")); say("Master "+mv.value+" dB"); return;
+      }
+      if(verb==="limiter"){
+        if(args[0]==="on") S.limiter.on=true;
+        else if(args[0]==="off") S.limiter.on=false;
+        else S.limiter.on=!S.limiter.on;
+        applyLimiterLive();
+        say(S.limiter.on?("Limiter ON ("+S.limiter.ceiling.toFixed(1)+" dB)"):"Limiter OFF"); return;
+      }
+      if(verb==="loop"){
+        const lb=document.querySelector("#btnLoop");
+        const sync=function(){ if(lb) lb.classList.toggle("on",S.loop.on); if(typeof drawRuler==="function") drawRuler(); };
+        if(args[0]==="on"){ S.loop.on=true; sync(); say("Loop ON"); return; }
+        if(args[0]==="off"){ S.loop.on=false; sync(); say("Loop OFF"); return; }
+        if(args[0]==="bars"){ const a=num(args[1]), b=num(args[2]);
+          if(a===null||b===null){ say("loop bars <start> <end>"); return; }
+          S.loop.start=Math.max(0,(a-1)*4*beatSec()); S.loop.end=b*4*beatSec(); S.loop.on=true; sync();
+          say("Loop bars "+a+"-"+b); return; }
+        const a=num(args[0]), b=num(args[1]);
+        if(a!==null&&b!==null){ S.loop.start=Math.min(a,b); S.loop.end=Math.max(a,b); S.loop.on=true; sync();
+          say("Loop "+S.loop.start.toFixed(1)+"-"+S.loop.end.toFixed(1)+" s"); return; }
+        S.loop.on=!S.loop.on; sync(); say(S.loop.on?"Loop ON":"Loop OFF"); return;
+      }
+      if(verb==="addtrack"){
+        const types=["vocal","inst","harmony"];
+        let type="vocal", nameArgs=args;
+        if(types.indexOf((args[0]||"").toLowerCase())>=0){ type=args[0].toLowerCase(); nameArgs=args.slice(1); }
+        const nm=nameArgs.join(" ")||((TYPES[type]?TYPES[type].label:type)+" "+(S.tracks.filter(function(t){ return t.type===type; }).length+1));
+        const tr=newTrack(nm,type);
+        if(type!=="inst"&&S.buses.length) tr.bus=S.buses[0].id;
+        S.tracks.push(tr); if(S.ctx) buildTrackGraph(tr);
+        S.selTrack=tr.id; renderTimeline(); renderInspector();
+        say("Added track: "+nm); return;
+      }
+      if(verb==="dup"){
+        const fc=findClip(S.selClip);
+        if(fc){ duplicateClip(fc.tr,fc.cl); say("Clip duplicated"); return; }
+        const tr=selTrackObj();
+        if(tr){ dupTrack(tr); say("Track duplicated: "+tr.name); return; }
+        say("Nothing to duplicate"); return;
+      }
+      if(verb==="rename"){
+        const tr=selTrackObj(); const nm=args.join(" ");
+        if(!tr||!nm){ say("rename <name> (selected track)"); return; }
+        tr.name=nm; renderTimeline(); renderInspector(); say("Renamed: "+nm); return;
+      }
+      if(verb==="export"){ const b=document.querySelector("#btnExportGo"); if(b){ closeBar(); b.click(); } return; }
+      if(verb==="manual"){ const b=document.querySelector("#btnManualGo"); if(b){ closeBar(); b.click(); } return; }
+      if(verb==="pitch"){
+        const fc=findClip(S.selClip);
+        if(fc&&window.VM_openPitchPage){ closeBar(); window.VM_openPitchPage(fc.tr.id,fc.cl.id); }
+        else say("Select a clip first"); return;
       }
       if(verb==="xfade"){
         const f=findClip(S.selClip); if(!f){ say("Select a clip first"); return; }
@@ -2321,6 +2558,168 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
       say("Unknown command: "+verb+" (help)");
     }catch(e){ say("Error: "+((e&&e.message)||e)); }
   }
+})();
+
+/* ---------- named snapshots ----------
+   User-named, persistent project snapshots in the same IndexedDB
+   store as the handoffs/autosave. Serialization is the boot's own
+   (window.VM_serializeProject), so a snapshot is exactly a project
+   file: restoring one is the autosave-restore path. Panel for
+   touch, "snap" verbs in the command bar for keyboards. */
+(function(){
+  if(/(pitch|export|manual)\.html/.test(location.pathname)) return;
+  const KEY="snapshots";
+  function ja(){ return vmLang()==="ja"; }
+  async function loadSnaps(){
+    try{ const db=await window.VM_idb.open(); const v=await window.VM_idb.get(db,KEY); db.close();
+      return Array.isArray(v)?v:[]; }catch(e){ return []; }
+  }
+  async function saveSnaps(list){
+    const db=await window.VM_idb.open(); await window.VM_idb.put(db,KEY,list); db.close();
+  }
+  async function snapSave(name){
+    if(!window.VM_serializeProject){ toast("Snapshots are not available here"); return false; }
+    name=(name||"").trim();
+    if(!name){ const d=new Date(); name="Snapshot "+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+    const list=await loadSnaps();
+    const proj=window.VM_serializeProject();
+    const rec={name:name, ts:Date.now(), tracks:(proj.tracks||[]).length, project:proj};
+    const ex=list.findIndex(function(x){ return x.name===name; });
+    if(ex>=0) list[ex]=rec;
+    else{
+      if(list.length>=P("snap.max")){ toast("Snapshot storage is full — delete one first"); return false; }
+      list.push(rec);
+    }
+    await saveSnaps(list);
+    toast("Snapshot saved: "+name);
+    return true;
+  }
+  async function snapLoad(name){
+    const list=await loadSnaps();
+    const rec=list.find(function(x){ return x.name===name; });
+    if(!rec){ toast("Snapshot not found: "+name); return false; }
+    if(S.playing) pause();
+    window.VM_restoreProject(rec.project);
+    renderTimeline(); renderInspector();
+    toast("Snapshot loaded: "+name);
+    return true;
+  }
+  async function snapDelete(name){
+    const list=await loadSnaps();
+    const next=list.filter(function(x){ return x.name!==name; });
+    if(next.length===list.length){ toast("Snapshot not found: "+name); return false; }
+    await saveSnaps(next);
+    toast("Snapshot deleted: "+name);
+    return true;
+  }
+  window.VM_snapSave=snapSave; window.VM_snapLoad=snapLoad;
+  window.VM_snapDelete=snapDelete; window.VM_snapList=loadSnaps;
+
+  /* panel */
+  const panel=document.createElement("div");
+  panel.className="parampanel snappanel";
+  const head=document.createElement("div"); head.className="pp-head";
+  const title=document.createElement("span"); title.textContent=ja()?"スナップショット":"Snapshots";
+  const close=document.createElement("button"); close.className="ghost"; close.textContent="✕";
+  close.addEventListener("click",function(){ panel.classList.remove("open"); });
+  head.appendChild(title); head.appendChild(close);
+  const newRow=document.createElement("div"); newRow.className="snapnew";
+  const nameIn=document.createElement("input"); nameIn.type="text";
+  nameIn.placeholder=ja()?"スナップショット名":"Snapshot name";
+  const saveBtn=document.createElement("button"); saveBtn.textContent=ja()?"保存":"Save";
+  newRow.appendChild(nameIn); newRow.appendChild(saveBtn);
+  const listEl=document.createElement("div");
+  panel.appendChild(head); panel.appendChild(newRow); panel.appendChild(listEl);
+  document.body.appendChild(panel);
+  async function refresh(){
+    listEl.textContent="";
+    const list=await loadSnaps();
+    if(!list.length){ const p=document.createElement("p"); p.className="small";
+      p.textContent=ja()?"まだスナップショットはありません":"No snapshots yet"; listEl.appendChild(p); return; }
+    list.slice().sort(function(a,b){ return b.ts-a.ts; }).forEach(function(rec){
+      const row=document.createElement("div"); row.className="snaprow";
+      const info=document.createElement("span"); info.className="snapinfo";
+      const d=new Date(rec.ts);
+      info.textContent=rec.name+" · "+d.getMonth()+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+" · "+rec.tracks+(ja()?" トラック":" tracks");
+      const lb=document.createElement("button"); lb.textContent=ja()?"読込":"Load";
+      lb.addEventListener("click",async function(){ await snapLoad(rec.name); refresh(); });
+      const db2=document.createElement("button"); db2.className="ghost"; db2.textContent="✕";
+      db2.addEventListener("click",async function(){ await snapDelete(rec.name); refresh(); });
+      row.appendChild(info); row.appendChild(lb); row.appendChild(db2);
+      listEl.appendChild(row);
+    });
+  }
+  saveBtn.addEventListener("click",async function(){
+    if(await snapSave(nameIn.value)){ nameIn.value=""; refresh(); }
+  });
+  const btn=document.querySelector("#btnSnaps");
+  function openSnaps(){ panel.classList.toggle("open"); if(panel.classList.contains("open")) refresh(); }
+  if(btn) btn.addEventListener("click",openSnaps);
+  window.VM_openSnaps=openSnaps;
+})();
+
+/* ---------- microphone recording ----------
+   Record along with playback: the take starts at the playhead,
+   and on stop it lands as a clip on a new track at that position
+   (shifted by the rec.offsetMs parameter for interface latency).
+   Mic processing (echo cancellation / noise suppression / AGC) is
+   off unless rec.processing is 1 — for singing, raw is right. */
+const REC={mr:null, stream:null, chunks:[], startPos:0, busy:false};
+async function recStart(){
+  if(REC.mr||REC.busy) return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof MediaRecorder==="undefined"){
+    toast("Microphone recording is not supported in this browser"); return;
+  }
+  ensureCtx();
+  const proc=P("rec.processing")>=1;
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:proc, noiseSuppression:proc, autoGainControl:proc}});
+  }catch(e){ toast("Microphone unavailable: "+((e&&e.name)||e)); return; }
+  REC.stream=stream; REC.chunks=[];
+  REC.startPos=S.playing?currentPos():S.pos;
+  let mr;
+  try{ mr=new MediaRecorder(stream); }
+  catch(e){ stream.getTracks().forEach(function(t){ t.stop(); }); toast("Microphone unavailable: "+((e&&e.name)||e)); return; }
+  REC.mr=mr;
+  mr.ondataavailable=function(ev){ if(ev.data&&ev.data.size) REC.chunks.push(ev.data); };
+  mr.onstop=recFinish;
+  mr.start(250);
+  const btn=document.querySelector("#btnRec"); if(btn) btn.classList.add("recording");
+  if(!S.playing) play();
+  toast("Recording…");
+}
+async function recFinish(){
+  const mr=REC.mr; REC.mr=null;
+  const btn=document.querySelector("#btnRec"); if(btn) btn.classList.remove("recording");
+  if(S.playing) pause();
+  if(REC.stream){ REC.stream.getTracks().forEach(function(t){ t.stop(); }); REC.stream=null; }
+  if(!REC.chunks.length){ toast("Nothing was recorded"); return; }
+  REC.busy=true;
+  try{
+    const blob=new Blob(REC.chunks, {type:(mr&&mr.mimeType)||"audio/webm"});
+    const ab=await blob.arrayBuffer();
+    const buf=await S.ctx.decodeAudioData(ab);
+    const n=S.tracks.filter(function(t){ return t.name.indexOf("Recorded")===0; }).length+1;
+    const tr=newTrack("Recorded "+n,"vocal");
+    if(S.buses.length) tr.bus=S.buses[0].id;
+    const start=Math.max(0, REC.startPos + P("rec.offsetMs")/1000);
+    const cl={id:nid(), name:"Take "+new Date().toTimeString().slice(0,8), buffer:buf,
+      start:start, offset:0, dur:buf.duration, gain:0, fadeIn:0, fadeOut:0, muted:false};
+    tr.clips.push(cl);
+    S.tracks.push(tr);
+    if(S.ctx) buildTrackGraph(tr);
+    S.selTrack=tr.id; S.selClip=cl.id;
+    renderTimeline(); renderInspector();
+    toast("Recorded take added: "+tr.name);
+  }catch(e){ toast("Could not decode the recording: "+((e&&e.message)||e)); }
+  REC.busy=false;
+}
+function recToggle(){ if(REC.mr){ REC.mr.stop(); } else recStart(); }
+(function(){
+  const btn=document.querySelector("#btnRec");
+  if(btn) btn.addEventListener("click",recToggle);
+  window.VM_recToggle=recToggle;
 })();
 
 (function(){
@@ -2560,12 +2959,23 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
    by exact-match dictionary over text nodes, plus pattern rules for
    toasts and the bar/beat readout. */
 (function(){
-  var JA = {"+ Add Track": "＋ トラック追加", "+ Import Audio": "＋ 音声を読み込む", "Import Audio": "音声を読み込む", "Load Demo Song": "デモ曲を読み込む", "Load the demo song?": "デモ曲を読み込みますか？", "All current tracks will be replaced by the demo song (backing + vocal + harmony). If you are working with your own audio, export it first before loading.": "今あるトラックはすべてデモ曲（オケ＋ボーカル＋ハモリ）に入れ替わります。自分の音源で作業中の場合は、先に書き出してから読み込んでください。", "Cancel": "キャンセル", "Replace & Load": "入れ替えて読み込む", "Channel": "チャンネル", "Effects": "エフェクト", "Pitch Correction": "ピッチ補正", "Mixer": "ミキサー", "Export": "書き出し", "Manual": "マニュアル", "Open Full-Screen Editor": "全画面エディターで開く", "Full-screen page — easier on a phone.": "全画面ページ — スマホで編集しやすい。", "Master": "マスター", "Tracks": "トラック", "Automation": "オートメーション", "Volume": "ボリューム", "Pan": "パン", "Off": "オフ", "Snap": "スナップ", "Zoom": "ズーム", "Delete Clip": "クリップ削除", "✂ Split": "✂ 分割", "Drag to move, drag the edges to trim": "ドラッグで移動、両端でトリム", "Drop audio files here": "ここに音声ファイルをドロップ", "Vocal": "ボーカル", "Harmony": "ハモリ", "Backing / Instrument": "オケ / 楽器", "Backing": "オケ", "Vocal Bus": "ボーカル バス", "Backing (Demo)": "オケ（デモ）", "Main Vocal (Demo)": "メインボーカル（デモ）", "Harmony (Demo)": "ハモリ（デモ）", "Track Settings": "トラック設定", "Selected Clip": "選択中のクリップ", "Name": "名前", "Type": "種類", "Output Bus": "出力バス", "Output": "出力", "Start": "開始", "Time": "時間", "Gain": "ゲイン", "Fade In": "フェードイン", "Fade Out": "フェードアウト", "Reverb Send": "リバーブ センド", "Delay Send": "ディレイ センド", "REV Send": "REV センド", "DLY Send": "DLY センド", "Add Bus": "バスを追加", "Bus": "バス", "Buses": "バス", "BUS": "バス", "Direct to Master": "マスターへ直接", "→ Master": "→ マスター", "Delete": "削除", "Duplicate": "複製", "Collapse": "折りたたむ", "Open": "開く", "Reset": "リセット", "Mute": "ミュート", "Muted": "ミュート中", "No tracks": "トラックがありません", "No tracks to export.": "書き出すトラックがありません。", "No effects": "エフェクトがありません", "No clips on this track": "このトラックにクリップはありません", "Clips": "クリップ", "Clip Edit Layer": "クリップ編集レイヤー", "Source Audio": "元の音源", "Always Kept": "常に保持", "Parameters layered on top": "パラメータを上に重ねる", "↓ Parameters layered on top": "↓ パラメータを上に重ねる", "+ Add Stage": "＋ ステージ追加", "Compressor": "コンプレッサー", "Parametric EQ": "パラメトリックEQ", "Reverb": "リバーブ", "Delay": "ディレイ", "Reverb (Insert)": "リバーブ（インサート）", "EQ": "EQ", "FX": "FX", "Threshold": "スレッショルド", "Ratio": "レシオ", "Knee": "ニー", "Attack": "アタック", "Release": "リリース", "Makeup": "メイクアップ", "Decay": "減衰", "Pre-delay": "プリディレイ", "Feedback": "フィードバック", "Delay Time": "ディレイタイム", "Delay Feedback": "ディレイ フィードバック", "Tempo Sync": "テンポ同期", "No Sync": "同期なし", "Frequency Hz": "周波数 Hz", "Gain dB": "ゲイン dB", "Gain Reduction (while playing)": "ゲインリダクション（再生中）", "PRESET": "プリセット", "Save Current Settings": "現在の設定を保存", "Saved for this session only": "このセッション内のみ保存", "My preset name": "プリセット名", "MIX PRESET": "MIX プリセット", "Save Current Mix": "現在のミックスを保存", "Returns (Send Destinations)": "リターン（センド先）", "RETURN": "リターン", "Reverb Decay": "リバーブ減衰", "Applied return preset": "リターンのプリセットを適用しました", "WAV / MP3 Export (Offline Render)": "WAV / MP3 書き出し（オフラインレンダー）", "Format": "形式", "Sample Rate": "サンプルレート", "Bit Depth": "ビット深度", "File Name": "ファイル名", "WAV (Uncompressed)": "WAV（無圧縮）", "WAV only": "WAVのみ", "Renders the whole project offline. Insert FX, sends / returns, buses, automation and fades are all included.": "プロジェクト全体をオフラインで書き出します。インサートFX、センド/リターン、バス、オートメーション、フェードがすべて含まれます。", "Pitch Correction Layer": "ピッチ補正レイヤー", "Delete Layer": "レイヤーを削除", "Deletes all analysis and correction. The source audio remains.": "解析と補正をすべて削除します。元の音源は残ります。", "Analyze Pitch": "ピッチ解析", "Analyzing…": "解析中…", "Correction Strength": "補正の強さ", "Effective shift = note shift x strength": "実効シフト ＝ ノートシフト × 強さ", "Snap to Nearest Note": "最寄りの音にスナップ", "Reset Correction (shifts to 0)": "補正をリセット（シフトを0に）", "Note ON/OFF": "ノート ON/OFF", "+ Semitone": "＋ 半音", "− Semitone": "− 半音", "Layer ON": "レイヤー ON", "Layer OFF": "レイヤー OFF", "Layer structure": "レイヤー構造", "Not Created": "未作成", "Click a block to select it; drag up / down to correct in semitones": "ブロックをクリックで選択、上下ドラッグで半音単位に補正", "Not analyzed yet. Run": "まだ解析していません。次を実行：", "This clip's editor is collapsed. Audio plays with the current settings.": "このクリップのエディタは折りたたまれています。現在の設定で再生されます。", "Split at Playhead": "再生ヘッドで分割", "Volume automation (click to add a point, right-click to delete)": "ボリューム オートメーション（クリックで点を追加、右クリックで削除）", "Pan automation (click to add a point, right-click to delete)": "パン オートメーション（クリックで点を追加、右クリックで削除）", "How to Use (collapse / expand)": "使い方（折りたたみ／展開）", "Choose Audio Files": "音声ファイルを選ぶ", "Vocal Basic": "ボーカル基本", "De-Mud": "こもり解消", "Presence & Air": "抜けと空気感", "Low Cut Only": "ローカットのみ", "Cover Standard": "歌ってみた標準", "Heavy": "しっかり潰す", "Ballad (Slow)": "バラード（遅め）", "Space": "空間", "Vocal Up Front": "ボーカル前面", "Wide Harmony": "ハモリ広め", "Dry (Minimal Sends)": "ドライ（センド最小）", "Wet (Spacious)": "ウェット（広め）", "Standard (No Fade)": "標準（フェードなし）", "Smooth In & Out": "なめらかイン＆アウト", "Long Fade": "ロングフェード", "Gain +3dB": "ゲイン +3dB", "Gain −3dB": "ゲイン −3dB", "Click Removal (10ms)": "クリック除去（10ms）", "Dotted 8th (BPM Sync)": "付点8分（BPM同期）", "8th Delay": "8分ディレイ", "Slapback": "スラップバック", "Dotted 8th": "付点8分", "Quarter Note": "4分音符", "8th Note": "8分音符", "16th Note": "16分音符", "Dotted 8th Sync": "付点8分 同期", "Quarter Sync": "4分 同期", "8th Sync": "8分 同期", "16th Sync": "16分 同期", "8th Triplet": "8分三連", "No audio files found": "音声ファイルが見つかりません", "Cannot delete the last track": "最後のトラックは削除できません", "Clip duplicated (source buffer is shared = non-destructive)": "クリップを複製しました（元のバッファを共有＝非破壊）", "Clip split": "クリップを分割しました", "Correction reset (source unchanged)": "補正をリセットしました（原音は不変）", "Demo song loaded. Press play to listen.": "デモ曲を読み込みました。再生してお聴きください。", "Generating demo song…": "デモ曲を生成中…", "Layer OFF — playing the source audio": "レイヤー OFF — 原音を再生します", "Not analyzed — source only": "未解析 — 原音のみ", "Note disabled — that note plays as the original": "ノートを無効化 — そのノートは原音で再生されます", "Note enabled": "ノートを有効化", "Pitch correction layer ON": "ピッチ補正レイヤー ON", "Pitch correction layer deleted (source audio remains)": "ピッチ補正レイヤーを削除しました（原音は残ります）", "Place the playhead inside the clip to split": "分割したいクリップ内に再生ヘッドを置いてください", "Select a clip to delete": "削除するクリップを選択してください", "Select a clip to split": "分割するクリップを選択してください", "Select a note first": "先にノートを選択してください", "Snapped enabled notes to the nearest pitch (layer only; source unchanged)": "有効なノートを最寄りの音程にスナップしました（レイヤーのみ、原音は不変）", "Stage reset to defaults": "ステージを初期値にリセットしました", "Could not load the MP3 encoder. Please export as WAV.": "MP3エンコーダを読み込めませんでした。WAVで書き出してください。", "Importing Audio": "音声を読み込み中", "Queued": "待機中", "Loaded": "読み込み完了", "Could not load": "読み込めませんでした", "Close": "閉じる", "The full-screen editor is not available on this page": "このページでは全画面エディターは使えません", "Back from the pitch editor — edits applied to the layer": "ピッチエディターから戻りました — 編集をレイヤーに反映しました", "Back from the pitch editor — project restored": "ピッチエディターから戻りました — プロジェクトを復元しました", "Back from the export page — project restored": "書き出しページから戻りました — プロジェクトを復元しました", "↩ Undo": "↩ 元に戻す", "↪ Redo": "↪ やり直し", "Project restored from autosave": "自動保存からプロジェクトを復元しました", "⚙ Params": "⚙ パラメータ", "Crossfade with Next": "次のクリップとクロスフェード", "No next clip on this track": "このトラックに次のクリップがありません", "Clips do not touch — move the next clip against this one first": "クリップが接していません — 次のクリップをくっつけてから実行してください", "Crossfade too short": "クロスフェードが短すぎます", "De-Esser": "ディエッサー", "Frequency": "周波数", "Standard": "標準", "Gentle": "弱め", "Strong Sibilance": "強い歯擦音", "High & Bright": "高域・明るめ", "Limiter": "リミッター", "Ducker (Sidechain)": "ダッカー（サイドチェイン）", "Key Source": "キーソース", "— None —": "— なし —", "This track ducks when the key track plays": "キートラックが鳴るとこのトラックが下がります", "Depth": "深さ", "No key selected": "キーが未選択です", "Vocal over Backing": "ボーカル優先", "Gentle Glue": "軽いグルー", "Pump": "パンピング", "Back from the manual — project restored": "マニュアルから戻りました — プロジェクトを復元しました", "Rendering…": "書き出し中…", "Audio flows from the top stage down. Each stage is an independent unit; summaries always show here.": "音は上のステージから下へ流れます。各ステージは独立したユニットで、要約は常にここに表示されます。", "Click a block to select it; drag up / down to correct in semitones. \"Note ON/OFF\" returns a single note to the original.": "ブロックをクリックで選択し、上下ドラッグで半音単位に補正します。「ノート ON/OFF」は1つのノートだけを原音に戻します。", "Clips / Mixer — Independent Units (Stage 3)": "クリップ／ミキサー — 独立ユニット", "Collapse unused stages with \"Collapse\" in the stage header to hide their parameters. The chain always shows each stage's summary, so the state stays visible while collapsed.": "使わないステージはヘッダーの「折りたたむ」でパラメータを隠せます。チェーンには各ステージの要約が常に出るので、たたんでも状態は見えます。", "Compressor — Full Control": "コンプレッサー — フルコントロール", "Correction applies to playback and export. It targets monophonic singing only (no chords, overlapping sources, or time stretching).": "補正は再生と書き出しに反映されます。対象は単音の歌声のみです（和音・重なった音源・タイムストレッチは対象外）。", "Correction is never baked into the source. Playback and export derive it from source + layer each time. Turn the layer OFF for the original instantly; deleting it still keeps the source.": "補正が原音に焼き込まれることはありません。再生と書き出しは毎回、原音＋レイヤーから導出します。レイヤーを OFF にすれば即座に原音に戻り、削除しても原音は残ります。", "Dashed = detected position; solid blocks = corrected position (strength applied). Gray = disabled notes; when the layer is OFF, everything is gray.": "破線＝検出位置、実ブロック＝補正後（強さ適用済み）。グレー＝無効化したノート。レイヤー OFF のときは全部グレーになります。", "Each stage has presets (EQ \"Vocal Basic\" and \"De-Mud\", Compressor \"Cover Standard\", and more). You can also save the current settings under a name (saved for this session only).": "各ステージにはプリセットがあります（EQ の「ボーカル基本」「こもり解消」、コンプレッサーの「歌ってみた標準」など）。現在の設定に名前を付けて保存もできます（このセッション内のみ）。", "Edits change parameters only; the source audio is never rewritten. Summaries keep the state visible while collapsed.": "編集はパラメータのみで、原音は書き換わりません。折りたたんでも要約で状態が見えます。", "Effects — Each Stage in the Serial Chain Is Independent": "エフェクト — 直列チェーンの各ステージは独立しています", "Even if you split / trim the clip after analysis, the layer carries over in buffer-time coordinates.": "解析後にクリップを分割／トリムしても、レイヤーはバッファ時間の座標で引き継がれます。", "How It Works — the Non-Destructive Design (collapse / expand)": "仕組み — 非破壊の設計（折りたたみ／展開）", "No voiced notes were detected. The audio may be too quiet or not monophonic. The source audio remains untouched.": "有声ノートが検出されませんでした。音が小さすぎるか、単音でない可能性があります。原音はそのまま残っています。", "Not analyzed yet. Run \"Analyze Pitch\" to detect notes and create this layer (the source stays untouched).": "まだ解析していません。「ピッチ解析」を実行するとノートを検出してこのレイヤーを作ります（原音には触れません）。", "Parametric EQ — drag handles (horizontal = frequency / vertical = gain), wheel for Q": "パラメトリックEQ — ハンドルをドラッグ（横＝周波数／縦＝ゲイン）、ホイールで Q", "Pitch Correction — Non-Destructive Layer": "ピッチ補正 — 非破壊レイヤー", "Press \"Analyze Pitch\" to detect pitch with the YIN method and show it as notes (blocks). Drag blocks up or down to correct in semitones, or use \"Snap to Nearest Note\" to pull all notes to the nearest pitch. Correction only layers on top; the source is never rewritten.": "「ピッチ解析」を押すと YIN 法で音程を検出し、ノート（ブロック）として表示します。ブロックを上下にドラッグして半音単位で補正するか、「最寄りの音にスナップ」で全ノートを最寄りの音程へ寄せます。補正は上に重ねるだけで、原音は書き換わりません。", "Select a clip on the timeline first. For monophonic vocal / harmony tracks (not for chords or overlapping sources).": "先にタイムラインでクリップを選んでください。単音のボーカル／ハモリ向けです（和音や重なった音源には使えません）。", "Select a stage from the list to edit its parameters here. Each stage is independent: ON/OFF, reorder, per-stage presets, duplicate and collapse.": "リストからステージを選ぶと、ここでパラメータを編集できます。各ステージは独立していて、ON/OFF・並び替え・段別プリセット・複製・折りたたみができます。", "Sends feed the return reverb / delay. Route several tracks to a bus to process them together.": "センドはリターンのリバーブ／ディレイへ送ります。複数トラックをバスへまとめると一括で処理できます。", "There are whole-mixer presets too (Cover Standard / Vocal Up Front / Dry, etc.). You can also save the current mix under a name (saved for this session only).": "ミキサー全体のプリセットもあります（歌ってみた標準／ボーカル前面／ドライ等）。現在のミックスに名前を付けて保存もできます（このセッション内のみ）。", "This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.": "このクリップはオケ／楽器トラックのものです。ピッチ補正は単音ボーカル向けの設計です。", "Re-analyze (rebuild layer)": "再解析（レイヤーを再構築）", "OFF — plays source": "OFF — 原音を再生", "Natural 60%": "ナチュラル 60%", "Standard 85%": "スタンダード 85%", "Full 100%": "フル 100%", "Pulls notes 60% of the way. Keeps vibrato and nuance.": "ノートを目標の60%まで寄せます。ビブラートとニュアンスを残します。", "The cover-song standard. Tunes pitch without sounding mechanical.": "歌ってみたの標準。機械的に聞こえない範囲で音程を整えます。", "Pulls fully to the target pitch. Meant to be combined with snap.": "目標の音程まで完全に寄せます。スナップとの併用が前提です。", "New bus name": "バス名を入力"};
+  var JA = {"+ Add Track": "＋ トラック追加", "+ Import Audio": "＋ 音声を読み込む", "Import Audio": "音声を読み込む", "Load Demo Song": "デモ曲を読み込む", "Load the demo song?": "デモ曲を読み込みますか？", "All current tracks will be replaced by the demo song (backing + vocal + harmony). If you are working with your own audio, export it first before loading.": "今あるトラックはすべてデモ曲（オケ＋ボーカル＋ハモリ）に入れ替わります。自分の音源で作業中の場合は、先に書き出してから読み込んでください。", "Cancel": "キャンセル", "Replace & Load": "入れ替えて読み込む", "Channel": "チャンネル", "Effects": "エフェクト", "Pitch Correction": "ピッチ補正", "Mixer": "ミキサー", "Export": "書き出し", "Manual": "マニュアル", "Open Full-Screen Editor": "全画面エディターで開く", "Full-screen page — easier on a phone.": "全画面ページ — スマホで編集しやすい。", "Master": "マスター", "Tracks": "トラック", "Automation": "オートメーション", "Volume": "ボリューム", "Pan": "パン", "Off": "オフ", "Snap": "スナップ", "Zoom": "ズーム", "Delete Clip": "クリップ削除", "✂ Split": "✂ 分割", "Drag to move, drag the edges to trim": "ドラッグで移動、両端でトリム", "Drop audio files here": "ここに音声ファイルをドロップ", "Vocal": "ボーカル", "Harmony": "ハモリ", "Backing / Instrument": "オケ / 楽器", "Backing": "オケ", "Vocal Bus": "ボーカル バス", "Backing (Demo)": "オケ（デモ）", "Main Vocal (Demo)": "メインボーカル（デモ）", "Harmony (Demo)": "ハモリ（デモ）", "Track Settings": "トラック設定", "Selected Clip": "選択中のクリップ", "Name": "名前", "Type": "種類", "Output Bus": "出力バス", "Output": "出力", "Start": "開始", "Time": "時間", "Gain": "ゲイン", "Fade In": "フェードイン", "Fade Out": "フェードアウト", "Reverb Send": "リバーブ センド", "Delay Send": "ディレイ センド", "REV Send": "REV センド", "DLY Send": "DLY センド", "Add Bus": "バスを追加", "Bus": "バス", "Buses": "バス", "BUS": "バス", "Direct to Master": "マスターへ直接", "→ Master": "→ マスター", "Delete": "削除", "Duplicate": "複製", "Collapse": "折りたたむ", "Open": "開く", "Reset": "リセット", "Mute": "ミュート", "Muted": "ミュート中", "No tracks": "トラックがありません", "No tracks to export.": "書き出すトラックがありません。", "No effects": "エフェクトがありません", "No clips on this track": "このトラックにクリップはありません", "Clips": "クリップ", "Clip Edit Layer": "クリップ編集レイヤー", "Source Audio": "元の音源", "Always Kept": "常に保持", "Parameters layered on top": "パラメータを上に重ねる", "↓ Parameters layered on top": "↓ パラメータを上に重ねる", "+ Add Stage": "＋ ステージ追加", "Compressor": "コンプレッサー", "Parametric EQ": "パラメトリックEQ", "Reverb": "リバーブ", "Delay": "ディレイ", "Reverb (Insert)": "リバーブ（インサート）", "EQ": "EQ", "FX": "FX", "Threshold": "スレッショルド", "Ratio": "レシオ", "Knee": "ニー", "Attack": "アタック", "Release": "リリース", "Makeup": "メイクアップ", "Decay": "減衰", "Pre-delay": "プリディレイ", "Feedback": "フィードバック", "Delay Time": "ディレイタイム", "Delay Feedback": "ディレイ フィードバック", "Tempo Sync": "テンポ同期", "No Sync": "同期なし", "Frequency Hz": "周波数 Hz", "Gain dB": "ゲイン dB", "Gain Reduction (while playing)": "ゲインリダクション（再生中）", "PRESET": "プリセット", "Save Current Settings": "現在の設定を保存", "Saved for this session only": "このセッション内のみ保存", "My preset name": "プリセット名", "MIX PRESET": "MIX プリセット", "Save Current Mix": "現在のミックスを保存", "Returns (Send Destinations)": "リターン（センド先）", "RETURN": "リターン", "Reverb Decay": "リバーブ減衰", "Applied return preset": "リターンのプリセットを適用しました", "WAV / MP3 Export (Offline Render)": "WAV / MP3 書き出し（オフラインレンダー）", "Format": "形式", "Sample Rate": "サンプルレート", "Bit Depth": "ビット深度", "File Name": "ファイル名", "WAV (Uncompressed)": "WAV（無圧縮）", "WAV only": "WAVのみ", "Renders the whole project offline. Insert FX, sends / returns, buses, automation and fades are all included.": "プロジェクト全体をオフラインで書き出します。インサートFX、センド/リターン、バス、オートメーション、フェードがすべて含まれます。", "Pitch Correction Layer": "ピッチ補正レイヤー", "Delete Layer": "レイヤーを削除", "Deletes all analysis and correction. The source audio remains.": "解析と補正をすべて削除します。元の音源は残ります。", "Analyze Pitch": "ピッチ解析", "Analyzing…": "解析中…", "Correction Strength": "補正の強さ", "Effective shift = note shift x strength": "実効シフト ＝ ノートシフト × 強さ", "Snap to Nearest Note": "最寄りの音にスナップ", "Reset Correction (shifts to 0)": "補正をリセット（シフトを0に）", "Note ON/OFF": "ノート ON/OFF", "+ Semitone": "＋ 半音", "− Semitone": "− 半音", "Layer ON": "レイヤー ON", "Layer OFF": "レイヤー OFF", "Layer structure": "レイヤー構造", "Not Created": "未作成", "Click a block to select it; drag up / down to correct in semitones": "ブロックをクリックで選択、上下ドラッグで半音単位に補正", "Not analyzed yet. Run": "まだ解析していません。次を実行：", "This clip's editor is collapsed. Audio plays with the current settings.": "このクリップのエディタは折りたたまれています。現在の設定で再生されます。", "Split at Playhead": "再生ヘッドで分割", "Volume automation (click to add a point, right-click to delete)": "ボリューム オートメーション（クリックで点を追加、右クリックで削除）", "Pan automation (click to add a point, right-click to delete)": "パン オートメーション（クリックで点を追加、右クリックで削除）", "How to Use (collapse / expand)": "使い方（折りたたみ／展開）", "Choose Audio Files": "音声ファイルを選ぶ", "Vocal Basic": "ボーカル基本", "De-Mud": "こもり解消", "Presence & Air": "抜けと空気感", "Low Cut Only": "ローカットのみ", "Cover Standard": "歌ってみた標準", "Heavy": "しっかり潰す", "Ballad (Slow)": "バラード（遅め）", "Space": "空間", "Vocal Up Front": "ボーカル前面", "Wide Harmony": "ハモリ広め", "Dry (Minimal Sends)": "ドライ（センド最小）", "Wet (Spacious)": "ウェット（広め）", "Standard (No Fade)": "標準（フェードなし）", "Smooth In & Out": "なめらかイン＆アウト", "Long Fade": "ロングフェード", "Gain +3dB": "ゲイン +3dB", "Gain −3dB": "ゲイン −3dB", "Click Removal (10ms)": "クリック除去（10ms）", "Dotted 8th (BPM Sync)": "付点8分（BPM同期）", "8th Delay": "8分ディレイ", "Slapback": "スラップバック", "Dotted 8th": "付点8分", "Quarter Note": "4分音符", "8th Note": "8分音符", "16th Note": "16分音符", "Dotted 8th Sync": "付点8分 同期", "Quarter Sync": "4分 同期", "8th Sync": "8分 同期", "16th Sync": "16分 同期", "8th Triplet": "8分三連", "No audio files found": "音声ファイルが見つかりません", "Cannot delete the last track": "最後のトラックは削除できません", "Clip duplicated (source buffer is shared = non-destructive)": "クリップを複製しました（元のバッファを共有＝非破壊）", "Clip split": "クリップを分割しました", "Correction reset (source unchanged)": "補正をリセットしました（原音は不変）", "Demo song loaded. Press play to listen.": "デモ曲を読み込みました。再生してお聴きください。", "Generating demo song…": "デモ曲を生成中…", "Layer OFF — playing the source audio": "レイヤー OFF — 原音を再生します", "Not analyzed — source only": "未解析 — 原音のみ", "Note disabled — that note plays as the original": "ノートを無効化 — そのノートは原音で再生されます", "Note enabled": "ノートを有効化", "Pitch correction layer ON": "ピッチ補正レイヤー ON", "Pitch correction layer deleted (source audio remains)": "ピッチ補正レイヤーを削除しました（原音は残ります）", "Place the playhead inside the clip to split": "分割したいクリップ内に再生ヘッドを置いてください", "Select a clip to delete": "削除するクリップを選択してください", "Select a clip to split": "分割するクリップを選択してください", "Select a note first": "先にノートを選択してください", "Snapped enabled notes to the nearest pitch (layer only; source unchanged)": "有効なノートを最寄りの音程にスナップしました（レイヤーのみ、原音は不変）", "Stage reset to defaults": "ステージを初期値にリセットしました", "Could not load the MP3 encoder. Please export as WAV.": "MP3エンコーダを読み込めませんでした。WAVで書き出してください。", "Importing Audio": "音声を読み込み中", "Queued": "待機中", "Loaded": "読み込み完了", "Could not load": "読み込めませんでした", "Close": "閉じる", "The full-screen editor is not available on this page": "このページでは全画面エディターは使えません", "Back from the pitch editor — edits applied to the layer": "ピッチエディターから戻りました — 編集をレイヤーに反映しました", "Back from the pitch editor — project restored": "ピッチエディターから戻りました — プロジェクトを復元しました", "Back from the export page — project restored": "書き出しページから戻りました — プロジェクトを復元しました", "↩ Undo": "↩ 元に戻す", "↪ Redo": "↪ やり直し", "Project restored from autosave": "自動保存からプロジェクトを復元しました", "⚙ Params": "⚙ パラメータ", "Crossfade with Next": "次のクリップとクロスフェード", "No next clip on this track": "このトラックに次のクリップがありません", "Clips do not touch — move the next clip against this one first": "クリップが接していません — 次のクリップをくっつけてから実行してください", "Crossfade too short": "クロスフェードが短すぎます", "De-Esser": "ディエッサー", "Frequency": "周波数", "Standard": "標準", "Gentle": "弱め", "Strong Sibilance": "強い歯擦音", "High & Bright": "高域・明るめ", "Limiter": "リミッター", "Ducker (Sidechain)": "ダッカー（サイドチェイン）", "Key Source": "キーソース", "— None —": "— なし —", "This track ducks when the key track plays": "キートラックが鳴るとこのトラックが下がります", "Depth": "深さ", "No key selected": "キーが未選択です", "Vocal over Backing": "ボーカル優先", "Gentle Glue": "軽いグルー", "Pump": "パンピング", "Normalize": "ノーマライズ", "Measure Loudness": "ラウドネス測定", "Snapshots": "スナップショット", "Snapshot storage is full — delete one first": "スナップショットがいっぱいです — 先に1つ削除してください", "Snapshots are not available here": "ここではスナップショットは使えません", "Microphone recording is not supported in this browser": "このブラウザではマイク録音に対応していません", "Nothing was recorded": "何も録音されませんでした", "Recording…": "録音中…", "Custom (loudness.target parameter)": "カスタム（loudness.target パラメータ）", "Back from the manual — project restored": "マニュアルから戻りました — プロジェクトを復元しました", "Rendering…": "書き出し中…", "Audio flows from the top stage down. Each stage is an independent unit; summaries always show here.": "音は上のステージから下へ流れます。各ステージは独立したユニットで、要約は常にここに表示されます。", "Click a block to select it; drag up / down to correct in semitones. \"Note ON/OFF\" returns a single note to the original.": "ブロックをクリックで選択し、上下ドラッグで半音単位に補正します。「ノート ON/OFF」は1つのノートだけを原音に戻します。", "Clips / Mixer — Independent Units (Stage 3)": "クリップ／ミキサー — 独立ユニット", "Collapse unused stages with \"Collapse\" in the stage header to hide their parameters. The chain always shows each stage's summary, so the state stays visible while collapsed.": "使わないステージはヘッダーの「折りたたむ」でパラメータを隠せます。チェーンには各ステージの要約が常に出るので、たたんでも状態は見えます。", "Compressor — Full Control": "コンプレッサー — フルコントロール", "Correction applies to playback and export. It targets monophonic singing only (no chords, overlapping sources, or time stretching).": "補正は再生と書き出しに反映されます。対象は単音の歌声のみです（和音・重なった音源・タイムストレッチは対象外）。", "Correction is never baked into the source. Playback and export derive it from source + layer each time. Turn the layer OFF for the original instantly; deleting it still keeps the source.": "補正が原音に焼き込まれることはありません。再生と書き出しは毎回、原音＋レイヤーから導出します。レイヤーを OFF にすれば即座に原音に戻り、削除しても原音は残ります。", "Dashed = detected position; solid blocks = corrected position (strength applied). Gray = disabled notes; when the layer is OFF, everything is gray.": "破線＝検出位置、実ブロック＝補正後（強さ適用済み）。グレー＝無効化したノート。レイヤー OFF のときは全部グレーになります。", "Each stage has presets (EQ \"Vocal Basic\" and \"De-Mud\", Compressor \"Cover Standard\", and more). You can also save the current settings under a name (saved for this session only).": "各ステージにはプリセットがあります（EQ の「ボーカル基本」「こもり解消」、コンプレッサーの「歌ってみた標準」など）。現在の設定に名前を付けて保存もできます（このセッション内のみ）。", "Edits change parameters only; the source audio is never rewritten. Summaries keep the state visible while collapsed.": "編集はパラメータのみで、原音は書き換わりません。折りたたんでも要約で状態が見えます。", "Effects — Each Stage in the Serial Chain Is Independent": "エフェクト — 直列チェーンの各ステージは独立しています", "Even if you split / trim the clip after analysis, the layer carries over in buffer-time coordinates.": "解析後にクリップを分割／トリムしても、レイヤーはバッファ時間の座標で引き継がれます。", "How It Works — the Non-Destructive Design (collapse / expand)": "仕組み — 非破壊の設計（折りたたみ／展開）", "No voiced notes were detected. The audio may be too quiet or not monophonic. The source audio remains untouched.": "有声ノートが検出されませんでした。音が小さすぎるか、単音でない可能性があります。原音はそのまま残っています。", "Not analyzed yet. Run \"Analyze Pitch\" to detect notes and create this layer (the source stays untouched).": "まだ解析していません。「ピッチ解析」を実行するとノートを検出してこのレイヤーを作ります（原音には触れません）。", "Parametric EQ — drag handles (horizontal = frequency / vertical = gain), wheel for Q": "パラメトリックEQ — ハンドルをドラッグ（横＝周波数／縦＝ゲイン）、ホイールで Q", "Pitch Correction — Non-Destructive Layer": "ピッチ補正 — 非破壊レイヤー", "Press \"Analyze Pitch\" to detect pitch with the YIN method and show it as notes (blocks). Drag blocks up or down to correct in semitones, or use \"Snap to Nearest Note\" to pull all notes to the nearest pitch. Correction only layers on top; the source is never rewritten.": "「ピッチ解析」を押すと YIN 法で音程を検出し、ノート（ブロック）として表示します。ブロックを上下にドラッグして半音単位で補正するか、「最寄りの音にスナップ」で全ノートを最寄りの音程へ寄せます。補正は上に重ねるだけで、原音は書き換わりません。", "Select a clip on the timeline first. For monophonic vocal / harmony tracks (not for chords or overlapping sources).": "先にタイムラインでクリップを選んでください。単音のボーカル／ハモリ向けです（和音や重なった音源には使えません）。", "Select a stage from the list to edit its parameters here. Each stage is independent: ON/OFF, reorder, per-stage presets, duplicate and collapse.": "リストからステージを選ぶと、ここでパラメータを編集できます。各ステージは独立していて、ON/OFF・並び替え・段別プリセット・複製・折りたたみができます。", "Sends feed the return reverb / delay. Route several tracks to a bus to process them together.": "センドはリターンのリバーブ／ディレイへ送ります。複数トラックをバスへまとめると一括で処理できます。", "There are whole-mixer presets too (Cover Standard / Vocal Up Front / Dry, etc.). You can also save the current mix under a name (saved for this session only).": "ミキサー全体のプリセットもあります（歌ってみた標準／ボーカル前面／ドライ等）。現在のミックスに名前を付けて保存もできます（このセッション内のみ）。", "This clip is on a backing / instrument track. Pitch correction is designed for monophonic vocals.": "このクリップはオケ／楽器トラックのものです。ピッチ補正は単音ボーカル向けの設計です。", "Re-analyze (rebuild layer)": "再解析（レイヤーを再構築）", "OFF — plays source": "OFF — 原音を再生", "Natural 60%": "ナチュラル 60%", "Standard 85%": "スタンダード 85%", "Full 100%": "フル 100%", "Pulls notes 60% of the way. Keeps vibrato and nuance.": "ノートを目標の60%まで寄せます。ビブラートとニュアンスを残します。", "The cover-song standard. Tunes pitch without sounding mechanical.": "歌ってみたの標準。機械的に聞こえない範囲で音程を整えます。", "Pulls fully to the target pitch. Meant to be combined with snap.": "目標の音程まで完全に寄せます。スナップとの併用が前提です。", "New bus name": "バス名を入力"};
   var ENR = {}; Object.keys(JA).forEach(function(k){ ENR[JA[k]] = k; });
   var PAT = [
     [/^Crossfade: ([\d.]+) s \(equal power\)$/, "クロスフェード: $1 秒（等パワー）"],
     [/^Limiter ON \(([\d.\-]+) dB\)$/, "リミッター ON（$1 dB）"],
     [/^Limiter OFF$/, "リミッター OFF"],
+    [/^Integrated loudness: (.+) · Peak: (.+)$/, "統合ラウドネス: $1 · ピーク: $2"],
+    [/^Track duplicated: (.+)$/, "トラックを複製しました: $1"],
+    [/^Added track: (.+)$/, "トラックを追加しました: $1"],
+    [/^Renamed: (.+)$/, "名前を変更しました: $1"],
+    [/^Snapshot saved: (.+)$/, "スナップショットを保存しました: $1"],
+    [/^Snapshot loaded: (.+)$/, "スナップショットを読み込みました: $1"],
+    [/^Snapshot deleted: (.+)$/, "スナップショットを削除しました: $1"],
+    [/^Snapshot not found: (.+)$/, "スナップショットが見つかりません: $1"],
+    [/^Microphone unavailable: (.+)$/, "マイクが使えません: $1"],
+    [/^Recorded take added: (.+)$/, "録音テイクを追加しました: $1"],
+    [/^Could not decode the recording: (.+)$/, "録音をデコードできませんでした: $1"],
     [/^Loaded: (.+)$/, "読み込みました: $1"],
     [/^Could not load: (.+)$/, "読み込めませんでした: $1"],
     [/^Could not hand the project over: (.+)$/, "プロジェクトを引き継げませんでした: $1"],

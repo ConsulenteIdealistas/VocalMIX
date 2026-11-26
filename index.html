@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
-    <link rel="stylesheet" href="app.css?v=ac0ddf6dda">
+    <link rel="stylesheet" href="app.css?v=9c31c6f7b6">
     
     
   
@@ -28,6 +28,7 @@
           <button class="tbtn play" id="btnPlay" title="Play / Stop (Space)">▶</button>
           <button class="tbtn" id="btnStop" title="Stop and return to start">■</button>
           <button class="tbtn" id="btnLoop" title="Loop playback">↻</button>
+          <button class="tbtn rec" id="btnRec" title="Record from microphone (R)">●</button>
         </div>
         <div class="timebox">
           <div class="big" id="timeBig">0:00.000</div>
@@ -50,6 +51,7 @@
           <button id="btnExportGo" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700">Export</button>
           <a class="navlink" id="btnManualGo" href="manual.html">Manual</a>
           <button id="btnParams" class="ghost">⚙ Params</button>
+          <button id="btnSnaps" class="ghost">Snapshots</button>
         </div>
       </div>
 
@@ -141,7 +143,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=62d673d062"></script>
+<script src="app.js?v=c4e21fbd0d"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -302,6 +304,7 @@
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
     S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
+    if(p.masterVol!=null) S.masterVolSaved=p.masterVol;
     if(p.limiter){ S.limiter.on=!!p.limiter.on; if(typeof p.limiter.ceiling==="number") S.limiter.ceiling=p.limiter.ceiling; if(typeof applyLimiterLive==="function") applyLimiterLive(); }
     var bs=document.querySelector("#btnSnap"); if(bs) bs.classList.toggle("on", !!p.snap);
     var maxId=0;
@@ -459,6 +462,11 @@
       if(rec && rec.project && rec.project.tracks && rec.project.tracks.length) showAutosaveBanner(rec);
     }catch(e){}
   })();
+
+  /* Named snapshots (app.js) reuse the handoff machinery. */
+  window.VM_serializeProject=serializeProject;
+  window.VM_restoreProject=restoreProject;
+  window.VM_idb={open:dbOpen, put:putKey, get:loadKey, del:delKey};
 })();
 </script>
 
