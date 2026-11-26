@@ -47,6 +47,11 @@
           <label for="speedSel">Speed</label>
           <select id="speedSel"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option></select>
           <button class="tbtn" id="btnTap" title="Tap tempo">Tap</button>
+          <select id="tsigSel" title="Time signature"><option value="2/4">2/4</option><option value="3/4">3/4</option><option value="4/4" selected>4/4</option><option value="5/4">5/4</option><option value="6/8">6/8</option></select>
+          <button class="tbtn" id="btnBeatMap" title="Beat map (rubato tempo map)">Map</button>
+          <label for="swingIn">Swing</label>
+          <input type="number" id="swingIn" value="0" min="0" max="75" step="5" style="width:52px">
+          <button class="tbtn" id="btnSwing" title="Apply swing to clip starts (off-beats move later)">Apply</button>
         </div>
         <div class="grp">
           <div class="meterwrap" title="Master level"><div class="meter"><i id="mL"></i></div><div class="meter"><i id="mR"></i></div></div>
@@ -159,7 +164,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=e13d752486"></script>
+<script src="app.js?v=6bcc969766"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -193,7 +198,7 @@
   function serializeProject(){
     var bufMap=new Map(), bufs=[];
     return {
-      v:1, bpm:S.bpm, loop:S.loop, autoMode:S.autoMode, snap:S.snap, px:S.px,
+      v:1, bpm:S.bpm, timeSig:S.timeSig, beatMap:S.beatMap, loop:S.loop, autoMode:S.autoMode, snap:S.snap, px:S.px,
       revMuted:S.revMuted, dlyMuted:S.dlyMuted, demoLoaded:S.demoLoaded,
       userFxPresets:S.userFxPresets, userMixPresets:S.userMixPresets, chainPresets:S.chainPresets,
       masterVol: document.querySelector("#masterVol").value,
@@ -317,7 +322,7 @@
     });
     S.buses=revive(p.buses, buffers);
     S.tracks=revive(p.tracks, buffers);
-    S.bpm=p.bpm; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
+    S.bpm=p.bpm; S.timeSig=p.timeSig||{n:4,d:4}; S.beatMap=p.beatMap||null; S.loop=p.loop; S.autoMode=p.autoMode; S.snap=p.snap; S.px=p.px;
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
     S.markers=p.markers||[]; S.vcas=p.vcas||[];
     if(p.masterChain) S.masterChain=p.masterChain; if(p.masterCompOn!=null) S.masterCompOn=p.masterCompOn;

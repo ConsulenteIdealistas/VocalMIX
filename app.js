@@ -1,4 +1,4 @@
-window.VM_BUILD="c2dbf95";
+window.VM_BUILD="d1e018f";
 
 "use strict";
 /* ============================================================
@@ -20,7 +20,7 @@ const S={
   ctx:null, master:null, masterComp:null, analyser:null,
   limiter:{on:true, ceiling:-1}, limiterNodes:null, masterCompOn:true, masterChain:null,
   masterVolSaved:"0",
-  bpm:120, playing:false, playCtxStart:0, playPosStart:0, pos:0,
+  bpm:120, timeSig:{n:4,d:4}, beatMap:null, playing:false, playCtxStart:0, playPosStart:0, pos:0,
   tracks:[], buses:[], sources:[],
   selTrack:null, selClip:null, selFx:-1,
   loop:{on:false,start:0,end:8},
@@ -2153,11 +2153,12 @@ function play(){
   const doCount=S.metroOn&&P("metro.countin")>0&&!S._skipCountIn;
   S._skipCountIn=false;
   if(doCount){
-    const bars=P("metro.countin"), bs=beatSec(), t0=S.ctx.currentTime+0.08;
-    for(let k=0;k<bars*4;k++) scheduleClick(t0+k*bs,k%4===0);
+    const bars=P("metro.countin"), bpb=beatsPerBar(), t0=S.ctx.currentTime+0.08;
+    const nb=Math.round(bars*bpb);
+    for(let k=0;k<nb;k++) scheduleClick(t0+(secAt(k)-secAt(0)),k%bpb===0);
     const tok=(S._countToken=(S._countToken||0)+1);
     toast("Count-in…");
-    setTimeout(function(){ if(S._countToken!==tok||S.playing) return; S._skipCountIn=true; play(); }, bars*4*bs*1000);
+    setTimeout(function(){ if(S._countToken!==tok||S.playing) return; S._skipCountIn=true; play(); }, (secAt(nb)-secAt(0))*1000);
     return;
   }
   if(S.pos>=projectEnd()-0.05) S.pos=0;
@@ -2179,7 +2180,7 @@ function currentPos(){
 }
 function seek(t){
   S.pos=clamp(t,0,projectEnd());
-  if(S._metroNext!==undefined) S._metroNext=Math.ceil(S.pos/beatSec()-1e-6);
+  if(S._metroNext!==undefined) S._metroNext=Math.ceil(beatAt(S.pos)-1e-6);
   if(S.playing){ startSources(S.pos); }
   updatePlayhead();
 }
@@ -2422,7 +2423,262 @@ async function importFiles(files){
    ============================================================ */
 const headsEl=$("#heads"), lanesEl=$("#lanes"), rulerEl=$("#ruler");
 function contentW(){ return Math.ceil(projectEnd()*S.px)+80; }
+/* Lane grid: constant spacing normally; with a beat map,
+   hard gradient stops at the performed beat/bar positions. */
+function gridBg(){
+  const M=S.beatMap;
+  if(!M||!M.times||M.times.length<2){
+    return `repeating-linear-gradient(to right, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent ${beatSec()*S.px}px), repeating-linear-gradient(to right, var(--gridbar) 0, var(--gridbar) 1px, transparent 1px, transparent ${beatSec()*beatsPerBar()*S.px}px)`;
+  }
+  const end=projectEnd(), bpb=beatsPerBar(), stops=[];
+  const nb=Math.floor(beatAt(end))+1;
+  const barsOnly=nb>800;
+  for(let k=0;k<=nb;k++){
+    const x=Math.round(secAt(k)*S.px);
+    const isBar=(k%bpb)===0;
+    if(barsOnly&&!isBar) continue;
+    const c=isBar?"var(--gridbar)":"var(--grid)";
+    stops.push(`${c} ${x}px, ${c} ${x+1}px, transparent ${x+1}px`);
+  }
+  return `linear-gradient(to right, transparent 0, ${stops.join(", ")})`;
+}
 function beatSec(){ return 60/S.bpm; }
+function beatsPerBar(){ const ts=S.timeSig||{n:4,d:4}; return ts.n*4/ts.d; }
+/* The tempo seam (#2-6 foundation): every beat<->second
+   conversion goes through beatAt/secAt. With no beat map
+   they are the constant-BPM degenerate case; with a map
+   they interpolate the performed beat times (rubato), and
+   only these internals know which world we are in. */
+function beatAt(t){
+  const M=S.beatMap;
+  if(!M||!M.times||M.times.length<2) return t/beatSec();
+  const T=M.times, n=T.length;
+  if(t<=T[0]) return (t-T[0])/(T[1]-T[0]);
+  for(let k=1;k<n;k++){ if(t<=T[k]) return (k-1)+(t-T[k-1])/(T[k]-T[k-1]); }
+  return (n-1)+(t-T[n-1])/(T[n-1]-T[n-2]);
+}
+function secAt(b){
+  const M=S.beatMap;
+  if(!M||!M.times||M.times.length<2) return b*beatSec();
+  const T=M.times, n=T.length;
+  if(b<=0) return T[0]+b*(T[1]-T[0]);
+  if(b>=n-1) return T[n-1]+(b-(n-1))*(T[n-1]-T[n-2]);
+  const k=Math.floor(b), f=b-k;
+  return T[k]+f*(T[k+1]-T[k]);
+}
+function beatDurAt(t){ const b=beatAt(t); return secAt(b+0.5)-secAt(b-0.5); }
+function bpmAt(t){ return 60/beatDurAt(t); }
+window.VM_beatAt=beatAt; window.VM_secAt=secAt; window.VM_beatsPerBar=beatsPerBar; window.VM_bpmAt=bpmAt;
+/* ---- Beat map (#2-6): performed beat times for rubato.
+   The map is a list of song-second times, one per beat;
+   beat 0 is the map's own anchor. ---- */
+function setBeatMap(times){
+  if(!times||times.length<2){ S.beatMap=null; }
+  else{
+    const T=[times[0]];
+    for(let i=1;i<times.length;i++) if(times[i]>T[T.length-1]+0.05) T.push(times[i]);
+    S.beatMap=T.length>=2?{times:T}:null;
+  }
+  renderTimeline(); updatePlayhead();
+  return S.beatMap;
+}
+window.VM_setBeatMap=setBeatMap;
+/* Light smoothing in the beat domain ([0.25,0.5,0.25],
+   endpoints held): kills per-tap jitter (fast noise) while
+   keeping rubato (slow variation) - the two live on
+   different timescales, which is what makes this safe. */
+function smoothBeatTimes(times, passes){
+  let T=times.slice();
+  for(let q=0;q<(passes||1);q++){
+    const U=T.slice();
+    for(let i=1;i<T.length-1;i++) U[i]=0.25*T[i-1]+0.5*T[i]+0.25*T[i+1];
+    T=U;
+  }
+  return T;
+}
+window.VM_smoothBeats=smoothBeatTimes;
+/* Spectral-flux onset envelope (denoiseClip's STFT
+   conventions), normalized to a max of 1. */
+function onsetEnvelope(buf, aSec, bSec){
+  const sr=buf.sampleRate, W=1024, hop=256, bins=W/2;
+  const a=Math.max(0,Math.floor(aSec*sr)), b=Math.min(buf.length,Math.floor(bSec*sr));
+  const frames=Math.max(0,Math.floor((b-a-W)/hop));
+  const env=new Float32Array(frames), hopSec=hop/sr;
+  if(frames<8) return {env:env, hopSec:hopSec};
+  const win=new Float32Array(W);
+  for(let i=0;i<W;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(W-1));
+  const re=new Float32Array(W), im=new Float32Array(W), prev=new Float32Array(bins);
+  const d=buf.getChannelData(0);
+  for(let f=0;f<frames;f++){ const st=a+f*hop;
+    for(let i=0;i<W;i++){ re[i]=d[st+i]*win[i]; im[i]=0; }
+    fftInPlace(re, im);
+    let flux=0;
+    for(let k=1;k<bins;k++){ const mg=Math.sqrt(re[k]*re[k]+im[k]*im[k]), df=mg-prev[k]; if(df>0) flux+=df; prev[k]=mg; }
+    env[f]=flux;
+  }
+  let mx=0; for(let f=0;f<frames;f++) mx=Math.max(mx,env[f]);
+  if(mx>0) for(let f=0;f<frames;f++) env[f]/=mx;
+  return {env:env, hopSec:hopSec};
+}
+/* Rubato beat tracking: dynamic programming over
+   (frame, period) states. Reward = onset strength at each
+   beat; transition cost = tight * (log(p2/p1))^2 with the
+   per-beat period change hard-capped at +-6% - rubato
+   drifts gradually, so tempo may wander far over a phrase
+   but may not jump between neighbouring beats. The path is
+   the maximum-onset beat grid consistent with that prior. */
+function trackBeats(env, hopSec, nominalSec, tight){
+  const F=env.length; if(F<16) return [];
+  const pMin=Math.max(4,Math.round(nominalSec*0.6/hopSec)), pMax=Math.round(nominalSec*1.7/hopSec);
+  const P=pMax-pMin+1; if(P<2) return [];
+  const NEG=-1e18;
+  const score=new Float32Array(F*P).fill(NEG), back=new Int32Array(F*P).fill(-1);
+  for(let f=0;f<Math.min(F,pMax);f++) for(let pi=0;pi<P;pi++) score[f*P+pi]=env[f];
+  const maxLog=0.06;
+  for(let f=0;f<F;f++){
+    for(let pi=0;pi<P;pi++){
+      const cur=score[f*P+pi]; if(cur===NEG) continue;
+      const per=pi+pMin, nf=f+per; if(nf>=F) continue;
+      const lo=Math.max(pMin,Math.floor(per*Math.exp(-maxLog))), hi=Math.min(pMax,Math.ceil(per*Math.exp(maxLog)));
+      for(let pj=lo;pj<=hi;pj++){
+        const c=cur+env[nf]-tight*Math.pow(Math.log(pj/per),2), idx=nf*P+(pj-pMin);
+        if(c>score[idx]){ score[idx]=c; back[idx]=f*P+pi; }
+      }
+    }
+  }
+  let best=NEG, bi=-1;
+  for(let f=Math.max(0,F-pMax);f<F;f++) for(let pi=0;pi<P;pi++){ const v=score[f*P+pi]; if(v>best){ best=v; bi=f*P+pi; } }
+  if(bi<0) return [];
+  const beats=[]; let cur=bi;
+  while(cur>=0){ beats.push(Math.floor(cur/P)); cur=back[cur]; }
+  beats.reverse();
+  return beats.map(function(f){
+    if(f<=0||f>=F-1) return f*hopSec;
+    const y0=env[f-1], y1=env[f], y2=env[f+1], den=y0-2*y1+y2;
+    const off=den!==0?0.5*(y0-y2)/den:0;
+    return (f+Math.max(-1,Math.min(1,off)))*hopSec;
+  });
+}
+window.VM_trackBeats=trackBeats; window.VM_onsetEnv=onsetEnvelope;
+function detectBeatMap(cl){
+  if(!cl||!cl.buffer) return null;
+  const oe=onsetEnvelope(cl.buffer, cl.offset, cl.offset+cl.dur);
+  const local=trackBeats(oe.env, oe.hopSec, beatSec(), P("beatmap.tight"));
+  if(local.length<4) return null;
+  return local.map(function(t){ return cl.start+t; });
+}
+window.VM_detectBeatMap=detectBeatMap;
+/* Swing (#2-7): clips whose start sits on an off-beat
+   eighth (beat fraction ~0.5) move later by pct of the
+   local eighth duration. The pre-swing start is kept in
+   cl.swingBase, so re-applying (including 0%) re-derives
+   from the original position - never cumulative. */
+function applySwing(pct){
+  let moved=0;
+  S.tracks.forEach(function(tr){ if(tr.folder) return;
+    (tr.clips||[]).forEach(function(cl){
+      if(cl.swingBase==null) cl.swingBase=cl.start;
+      const base=cl.swingBase, b=beatAt(base), frac=b-Math.floor(b);
+      const off=Math.abs(frac-0.5)<0.15 ? (pct/100)*(beatDurAt(base)/2) : 0;
+      const ns=Math.max(0, base+off);
+      if(Math.abs(ns-cl.start)>1e-9) moved++;
+      cl.start=ns;
+    }); });
+  renderTimeline();
+  return moved;
+}
+window.VM_swing=applySwing;
+/* Grid quantize (#2-4): pull a time toward the nearest
+   grid point (div steps per beat) by strength 0..1, in
+   beat space - so it follows the beat map when one exists. */
+function quantizeTime(t, strength, div){
+  const b=beatAt(t), g=Math.round(b*div)/div;
+  return t+(secAt(g)-t)*strength;
+}
+function quantizeClip(cl, strength, div){
+  const L=pitchLayer(cl);
+  if(L&&L.notes&&L.notes.length){
+    L.notes.forEach(function(n){
+      const tl=cl.start+(n.start-cl.offset);
+      const d=quantizeTime(tl, strength, div)-tl;
+      n.start+=d; n.end+=d;
+    });
+    cl._corrCache=null; cl._ngCache=null;
+    renderTimeline();
+    return L.notes.length;
+  }
+  cl.start=quantizeTime(cl.start, strength, div);
+  renderTimeline();
+  return 1;
+}
+window.VM_quantize=quantizeClip; window.VM_quantizeTime=quantizeTime;
+/* ---- Beat map panel ---- */
+let bmPanel=null, bmTaps=null;
+function bmStatusText(){
+  const M=S.beatMap;
+  if(!M) return "No beat map - constant "+S.bpm+" BPM. Auto-detect reads the selected clip's onsets with a rubato prior (tempo may drift, never jump).";
+  const T=M.times;
+  let mn=1e9, mx=0;
+  for(let i=1;i<T.length;i++){ const bpm=60/(T[i]-T[i-1]); if(bpm<mn)mn=bpm; if(bpm>mx)mx=bpm; }
+  return T.length+" beats - tempo "+Math.round(mn)+"-"+Math.round(mx)+" BPM. Beat 0 is the map's first beat; bars, grid, metronome, snap and quantize follow it.";
+}
+function buildBeatMapPanel(){
+  if(bmPanel) return bmPanel;
+  const panel=document.createElement("div");
+  panel.className="parampanel";
+  const head=document.createElement("div"); head.className="pp-head";
+  const title=document.createElement("span"); title.textContent="Beat Map (rubato)"; title.style.fontSize="12px";
+  const close=document.createElement("button"); close.className="ghost"; close.textContent="\u2715";
+  close.addEventListener("click",function(){ panel.classList.remove("open"); });
+  head.appendChild(title); head.appendChild(close);
+  const stat=document.createElement("p"); stat.className="small"; stat.id="bmStatus";
+  const row=document.createElement("div"); row.className="snapnew";
+  const mkBtn=function(label, fn){ const b=document.createElement("button"); b.textContent=label; b.addEventListener("click",fn); return b; };
+  const auto=mkBtn("Auto-detect (selected clip)", function(){
+    const f=findClip(S.selClip);
+    if(!f){ toast("Select a clip first"); return; }
+    toast("Detecting beats\u2026");
+    setTimeout(function(){
+      const times=detectBeatMap(f.cl);
+      if(times&&setBeatMap(times)) toast("Beat map: "+times.length+" beats from onsets");
+      else toast("Could not find beats in that clip");
+      refreshBmPanel();
+    }, 30);
+  });
+  const doneBtn=mkBtn("Done", function(){
+    const taps=bmTaps; bmTaps=null;
+    tapBtn.textContent="Tap beats"; doneBtn.style.display="none";
+    if(taps&&taps.length>=4){ setBeatMap(smoothBeatTimes(taps,1)); toast("Beat map from "+taps.length+" taps (smoothed)"); }
+    else if(taps) toast("Too few taps - need at least 4");
+    refreshBmPanel();
+  });
+  doneBtn.style.display="none";
+  const tapBtn=mkBtn("Tap beats", function(){
+    if(bmTaps){
+      bmTaps.push(currentPos());
+      tapBtn.textContent="Tap ("+bmTaps.length+")";
+      return;
+    }
+    bmTaps=[];
+    tapBtn.textContent="Tap (0)";
+    doneBtn.style.display="";
+    toast("Play the rubato recording and tap every beat, then Done");
+  });
+  const smooth=mkBtn("Smooth", function(){ if(S.beatMap){ setBeatMap(smoothBeatTimes(S.beatMap.times,1)); toast("Beat map smoothed"); refreshBmPanel(); } });
+  const clear=mkBtn("Clear map", function(){ setBeatMap(null); toast("Beat map cleared - constant BPM"); refreshBmPanel(); });
+  row.appendChild(auto); row.appendChild(tapBtn); row.appendChild(doneBtn); row.appendChild(smooth); row.appendChild(clear);
+  panel.appendChild(head); panel.appendChild(stat); panel.appendChild(row);
+  document.body.appendChild(panel);
+  bmPanel=panel;
+  return panel;
+}
+function refreshBmPanel(){ const st=document.querySelector("#bmStatus"); if(st) st.textContent=bmStatusText(); }
+function toggleBeatMapPanel(){
+  const p=buildBeatMapPanel();
+  p.classList.toggle("open");
+  refreshBmPanel();
+}
+window.VM_beatMapPanel=toggleBeatMapPanel;
 function drawRuler(){
   const w=contentW(); rulerEl.width=w; rulerEl.style.width=w+"px";
   const c=rulerEl.getContext("2d"); c.clearRect(0,0,w,30);
@@ -2529,8 +2785,7 @@ function renderTimeline(){
     headsEl.appendChild(hd);
 
     const ln=document.createElement("div"); ln.className="lane"+(tr.id===S.selTrack?" sel":""); ln.dataset.tid=tr.id;
-    ln.style.backgroundImage=`repeating-linear-gradient(to right, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent ${beatSec()*S.px}px),
-      repeating-linear-gradient(to right, var(--gridbar) 0, var(--gridbar) 1px, transparent 1px, transparent ${beatSec()*4*S.px}px)`;
+    ln.style.backgroundImage=gridBg();
     tr.clips.forEach(cl=>{
       const el=document.createElement("div"); el.className="clip"+(cl.id===S.selClip?" sel":"")+(cl.muted?" muted":"");
       el.style.left=(cl.start*S.px)+"px"; el.style.width=Math.max(8,cl.dur*S.px)+"px";
@@ -2572,13 +2827,13 @@ function clipPointer(e,tr,cl,el){
   const x0=e.clientX;
   const mode=e.target.classList.contains("l")?"trimL":(e.target.classList.contains("r")?"trimR":"move");
   const orig={start:cl.start,offset:cl.offset,dur:cl.dur};
-  const snapT=t=>{ if(!S.snap||e.altKey) return t; const g=beatSec()/2; return Math.round(t/g)*g; };
+  const snapT=t=>{ if(!S.snap||e.altKey) return t; return secAt(Math.round(beatAt(t)*2)/2); };
   function mv(ev){
     const dt=(ev.clientX-x0)/S.px;
     if(mode==="move"){ cl.start=Math.max(0,snapT(orig.start+dt)); }
     else if(mode==="trimL"){ const ns=clamp(snapT(orig.start+dt),Math.max(0,orig.start-orig.offset),orig.start+orig.dur-0.05);
       cl.offset=orig.offset+(ns-orig.start); cl.dur=orig.dur-(ns-orig.start); cl.start=ns; }
-    else { cl.dur=clamp(orig.dur+dt,0.05,cl.buffer.duration-cl.offset); if(S.snap&&!ev.altKey){ const g=beatSec()/2; cl.dur=Math.max(0.05,Math.round(cl.dur/g)*g); } }
+    else { cl.dur=clamp(orig.dur+dt,0.05,cl.buffer.duration-cl.offset); if(S.snap&&!ev.altKey){ const g=beatDurAt(cl.start)/2; cl.dur=Math.max(0.05,Math.round(cl.dur/g)*g); } }
     el2.style.left=(cl.start*S.px)+"px"; el2.style.width=Math.max(8,cl.dur*S.px)+"px";
   }
   function up(){ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up);
@@ -2639,7 +2894,7 @@ function autoPointer(e,tr,ac){
   if(hit<0){ pts.push({t:Math.max(0,t),v}); pts.sort((a,b)=>a.t-b.t); hit=pts.findIndex(p=>p.t===Math.max(0,t)); }
   const p=pts[hit]; if(!p) return;
   function mv(ev){ const nt=clamp((ev.clientX-r.left)/S.px,0,projectEnd());
-    p.t=S.snap?Math.round(nt/(beatSec()/4))*(beatSec()/4):nt; p.v=autoY2V(ev.clientY-r.top,h);
+    p.t=S.snap?secAt(Math.round(beatAt(nt)*4)/4):nt; p.v=autoY2V(ev.clientY-r.top,h);
     pts.sort((a,b)=>a.t-b.t); drawAuto(ac,tr); }
   function up(){ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up);
     if(S.playing) startSources(currentPos()); }
@@ -3471,7 +3726,8 @@ function manualHTML(){
         <li>Crossfade: select the left of two touching clips and use "Crossfade with Next" in the clip editor (equal-power curves). Its default length is the xfade.sec parameter.</li>
         <li>Fade curves: each clip fade can be Linear, Equal Power, or S-Curve (clip editor, or "fadecurve in|out lin|eqp|scurve"). Equal power suits joins between different sounds; S-curve is the gentle default for a single clip's edges.</li>
         <li>Noise Gate: an insert stage that drops the level by its Range when the signal falls below the Threshold — for room noise between phrases. Gentle Expander (12 dB range) is the subtle option; release around 100–200 ms avoids chattering.</li>
-        <li>Metronome: the ♩ button (or "metro") clicks along with playback in 4/4 with an accented beat 1, and play/record starts after metro.countin bars of count-in clicks. The click is live only — it never appears in exports.</li>
+        <li>Metronome: the ♩ button (or "metro") clicks along with playback in the chosen time signature with an accented beat 1, and play/record starts after metro.countin bars of count-in clicks. The click is live only — it never appears in exports.</li>
+        <li>Beat map (the Map button, or "beatmap auto"): for rubato performances whose tempo breathes, auto-detect reads the selected clip's onsets and fits the beat grid with a rubato prior - tempo may drift gradually but never jump between beats - or tap the beats yourself during playback. Bars, grid lines, metronome, snap, swing and quantize then follow the performed beats instead of a constant BPM. Swing (transport) delays off-beat clip starts; Quantize (Pitch tab) pulls note starts to the grid at a chosen strength.</li>
         <li>True peak: the loudness readout also shows the true peak (dBTP, 4× oversampled per BS.1770), which catches inter-sample peaks that a plain sample-peak reading misses — keep it under your limiter ceiling.</li>
         <li>Polarity invert: the Ø button on a track head (or "phase") flips the track's polarity — for doubled or layered takes that thin out when combined. Applies live and in exports.</li>
         <li>Clip normalize: the Normalize button in the clip editor (or "norm") sets the clip gain so its peak reaches the norm.target parameter (−1 dB by default).</li>
@@ -4635,6 +4891,9 @@ function pitchHTML(){
   if(L&&L.notes.length){
     h+=`<div class="pitchbar">
       <button id="btnSnapNotes">Snap to Nearest Note</button>
+      <label class="small">Quantize <input type="range" id="pQuantStr" min="0" max="100" step="5" value="100" style="width:80px"><span id="pQuantStrVal">100%</span></label>
+      <select id="pQuantDiv"><option value="1">1/4</option><option value="2" selected>1/8</option><option value="4">1/16</option></select>
+      <button id="btnQuantize" class="ghost">Quantize Notes</button>
       <label class="small">Scale <select id="scaleRoot">${NOTE_NAMES.map((nm,i)=>`<option value="${i}" ${((L&&L.scaleRoot)||0)===i?"selected":""}>${nm}</option>`).join("")}</select>
       <select id="scaleMode">${["chromatic","major","minor"].map(m=>`<option value="${m}" ${((L&&L.scaleMode)||"chromatic")===m?"selected":""}>${m}</option>`).join("")}</select></label>
       <button id="btnHarmony" class="ghost">Harmony +4 st</button><button id="btnHarmony7" class="ghost">Harmony +7 st</button>
@@ -4753,6 +5012,11 @@ function wirePitch(){
   /* Presets */
   $$("[data-preset]").forEach(b=>b.addEventListener("click",()=>{ if(!L)return; const p=PITCH_PRESETS.find(x=>x.id===b.dataset.preset); if(!p)return;
     L.strength=p.strength; refreshPitchRender(cl); renderInspector(); toast("Applied preset \""+p.label+"\" — "+p.desc); }));
+  const qb=$("#btnQuantize");
+  if(qb) qb.onclick=()=>{ const st=parseFloat(($("#pQuantStr")||{}).value||100)/100, dv=parseFloat(($("#pQuantDiv")||{}).value||2);
+    const n=quantizeClip(cl, st, dv); refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); toast("Quantized "+n+" note(s) at "+Math.round(st*100)+"%"); };
+  const qs=$("#pQuantStr");
+  if(qs) qs.addEventListener("input",()=>{ const v=$("#pQuantStrVal"); if(v) v.textContent=qs.value+"%"; });
   const snap=$("#btnSnapNotes");
   if(snap&&L) snap.onclick=()=>{ L.notes.forEach(n=>{ if(n.enabled!==false) n.shift=Math.round((nearestScaleMidi(n.midi,L)-n.midi)*1000)/1000; });
     refreshPitchRender(cl); renderTimeline(); if(cv)drawPitch(cv,cl); updatePitchInfo(cl);
@@ -4842,7 +5106,7 @@ function splitSelected(){
   if(t<=cl.start+0.02||t>=cl.start+cl.dur-0.02){ toast("Place the playhead inside the clip to split"); return; }
   const right={id:nid(),name:cl.name,buffer:cl.buffer,sourceBuffer:cl.sourceBuffer||cl.buffer,start:t,offset:cl.offset+(t-cl.start),dur:cl.start+cl.dur-t,
     gain:cl.gain,fadeIn:0,fadeOut:cl.fadeOut,muted:!!cl.muted,curveOut:cl.curveOut,reversed:!!cl.reversed,
-    takes:cl.takes?[...cl.takes]:undefined, takeIdx:cl.takeIdx||0, takeMeta:cl.takeMeta?JSON.parse(JSON.stringify(cl.takeMeta)):undefined};
+    takes:cl.takes?[...cl.takes]:undefined, takeIdx:cl.takeIdx||0, takeMeta:cl.takeMeta?JSON.parse(JSON.stringify(cl.takeMeta)):undefined, swingBase:(cl.swingBase!=null?cl.swingBase+(t-cl.start):undefined)};
   /* The pitch layer uses buffer-time coordinates, so it carries over on split.
      The source buffer is shared (not copied = non-destructive); the layer is value-copied to stay independent.
      Derivation caches are not shared; each clip re-derives its own range. */
@@ -4872,6 +5136,9 @@ const pb=$("#btnPractice"); if(pb) pb.onclick=e=>{ const P0=VM_practice; P0.on=!
   if(P0.on&&!S.loop.on){ S.loop.on=true; if(S.loop.end<=S.loop.start){ S.loop.start=0; S.loop.end=Math.min(8,projectEnd()); } const lb=$("#btnLoop"); if(lb) lb.classList.add("on"); drawRuler(); }
   toast(P0.on?("Practice ON: +"+Math.round(P0.step*100)+"% every "+P0.every+" loops"):"Practice OFF"); };
 const rb=$("#btnRetake"); if(rb) rb.onclick=()=>retakeLast();
+const bmp=$("#btnBeatMap"); if(bmp) bmp.onclick=()=>toggleBeatMapPanel();
+const swb=$("#btnSwing"); if(swb) swb.onclick=()=>{ const v=parseFloat(($("#swingIn")||{}).value)||0;
+  const n=applySwing(v); toast("Swing "+v+"% applied ("+n+" clip(s) moved)"); };
 const mfb=$("#btnMonFx"); if(mfb){ mfb.classList.toggle("on", !!S.monFxOn);
   mfb.onclick=()=>{ S.monFxOn=!S.monFxOn; mfb.classList.toggle("on", S.monFxOn);
     if(S.monFxOn){ monFxStart(); toast("Monitor FX ON - you hear reverb while recording; the take stays dry. Headphones recommended."); }
@@ -4882,6 +5149,8 @@ $("#btnLoop").onclick=e=>{ S.loop.on=!S.loop.on; e.currentTarget.classList.toggl
 $("#masterVol").addEventListener("input",e=>{ if(S.master)S.master.gain.setTargetAtTime(db2lin(parseFloat(e.target.value)),S.ctx.currentTime,0.03); });
 $("#bpmIn").addEventListener("change",e=>{ S.bpm=clamp(parseFloat(e.target.value)||120,40,240); e.target.value=S.bpm;
   renderTimeline(); });
+const tsg=$("#tsigSel"); if(tsg){ tsg.value=(S.timeSig.n||4)+"/"+(S.timeSig.d||4);
+  tsg.addEventListener("change",()=>{ const pr=tsg.value.split("/"); S.timeSig={n:+pr[0], d:+pr[1]}; renderTimeline(); updatePlayhead(); toast("Time signature "+tsg.value); }); }
 $("#btnImport").onclick=()=>$("#fileIn").click();
 $("#btnDemo").onclick=()=>requestDemoLoad();
 $("#btnDemoOk").onclick=()=>{ $("#demoConfirm").hidden=true; buildDemoProject(); };
@@ -5023,7 +5292,7 @@ function updatePlayhead(){
   ph.style.left=(pos*S.px)+"px"; ph.style.top="0"; ph.style.height="100%";
   ph.parentElement.style.position="relative";
   $("#timeBig").textContent=fmtT(pos);
-  const bt=pos/beatSec(); const bar=Math.floor(bt/4)+1, beat=Math.floor(bt%4)+1;
+  const bt=beatAt(pos), bpb=beatsPerBar(); const bar=Math.floor(bt/bpb)+1, beat=Math.floor(bt%bpb)+1;
   $("#timeBar").textContent="Bar "+bar+" · Beat "+beat;
   $("#timeLen").textContent=fmtT(projectEnd());
   const bb=$("#barTimeBig"); if(bb) bb.textContent=fmtT(pos);
@@ -5111,6 +5380,7 @@ const PARAM_DEFS={
   "repair.levelDb": {def:6, min:1, max:12, step:0.5, label:"Syllable leveling max correction (dB)", ja:"音節レベル均しの最大補正（dB）"},
   "repair.noise": {def:1, min:0.2, max:2, step:0.1, label:"Room-noise reduction strength", ja:"部屋ノイズ除去の強さ"},
   "rumble.hz":{def:70, min:30, max:150, step:5, label:"Rumble cutoff (Hz)", ja:"ランブル除去のカットオフ（Hz）"},
+  "beatmap.tight":{def:20, min:0, max:100, step:1, label:"Beat-map stiffness (rubato DP prior)", ja:"ビートマップの硬さ（ルバートDP事前分布）"},
   "monfx.wet":{def:0.35, min:0, max:1, step:0.05, label:"Monitor FX wet level", ja:"モニターFXの残響量"},
   "export.tailfade":{def:2, min:0,     max:10,  step:0.5,   label:"Export tail fade length when 'Custom' (s)", ja:"書き出し曲尾フェード（カスタム時、秒）"},
   "metro.vol":   {def:50,   min:0,     max:100, step:1,     label:"Metronome volume (%)", ja:"メトロノーム音量（%）"},
@@ -5370,6 +5640,24 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
         if(args[0]==="every"){ P0.every=Math.max(1, parseInt(args[1])||2); say("Practice: speed up every "+P0.every+" loops"); return; }
         if(args[0]==="step"){ P0.step=Math.min(0.5, Math.max(0.01, (parseFloat(args[1])||5)/100)); say("Practice step: +"+Math.round(P0.step*100)+"%"); return; }
         say("practice on|off|every <n>|step <pct> - now "+(P0.on?"ON":"OFF")+", every "+P0.every+", step "+Math.round(P0.step*100)+"%"); return; }
+      if(verb==="beatmap"){
+        if(args[0]==="auto"){ const f=findClip(S.selClip); if(!f){ say("Select a clip first"); return; }
+          const times=detectBeatMap(f.cl);
+          if(times&&setBeatMap(times)){ say("Beat map: "+times.length+" beats"); } else say("No beats found"); return; }
+        if(args[0]==="smooth"){ if(S.beatMap){ setBeatMap(smoothBeatTimes(S.beatMap.times,1)); say("Smoothed"); } else say("No beat map"); return; }
+        if(args[0]==="clear"){ setBeatMap(null); say("Beat map cleared"); return; }
+        say(S.beatMap?("Beat map: "+S.beatMap.times.length+" beats"):"No beat map"); return; }
+      if(verb==="timesig"){
+        const m2=(args[0]||"").match(/^(\d+)\/(\d+)$/);
+        if(m2){ S.timeSig={n:+m2[1], d:+m2[2]}; const tg=$("#tsigSel"); if(tg) tg.value=args[0]; renderTimeline(); say("Time signature "+args[0]); }
+        else say("Time signature "+(S.timeSig.n||4)+"/"+(S.timeSig.d||4)+" - usage: timesig 3/4");
+        return; }
+      if(verb==="swing"){ const v=parseFloat(args[0]); if(isNaN(v)){ say("Usage: swing <0-75>"); return; }
+        const inp=$("#swingIn"); if(inp) inp.value=v;
+        say("Swing "+v+"% on "+applySwing(v)+" clip(s)"); return; }
+      if(verb==="quantize"){ const f=findClip(S.selClip); if(!f){ say("Select a clip first"); return; }
+        const st=clamp(parseFloat(args[0])||100, 0, 100)/100, dv=parseFloat(args[1])||2;
+        say("Quantized "+quantizeClip(f.cl, st, dv)+" item(s)"); return; }
       if(verb==="chain"){
         if(args[0]==="save"){ const nm=args.slice(1).join(" ")||("Chain "+((S.chainPresets||[]).length+1)); if(saveChainPreset(nm)){ say("Saved chain "+nm); renderInspector(); } else say("No track"); return; }
         if(args[0]==="apply"){ const nm=args.slice(1).join(" "); say(applyChainPreset(nm)?("Applied chain "+nm):"No such chain"); return; }
@@ -5459,7 +5747,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
         const a=(args[0]||"").toLowerCase(); let v=null;
         if(a==="start") v=0;
         else if(a==="end") v=projectEnd();
-        else if(a==="bar"){ const b=num(args[1]); if(b!==null) v=Math.max(0,(b-1)*4*beatSec()); }
+        else if(a==="bar"){ const b=num(args[1]); if(b!==null) v=Math.max(0,secAt((b-1)*beatsPerBar())); }
         else { const mm=/^(\d+):([\d.]+)$/.exec(a); if(mm) v=parseInt(mm[1])*60+parseFloat(mm[2]); else v=num(a); }
         if(v===null){ say("seek: <sec> | 1:30 | bar <n> | start | end"); return; }
         seek(v); say("Seek "+fmtT(v)); return;
@@ -5757,15 +6045,15 @@ const METRO={timer:null};
 function metroStart(){
   metroStop();
   if(!S.metroOn||!S.playing) return;
-  S._metroNext=Math.ceil(S.playPosStart/beatSec()-1e-6);
+  S._metroNext=Math.ceil(beatAt(S.playPosStart)-1e-6);
   const tick=function(){
     if(!S.playing) return;
-    const ahead=S.ctx.currentTime+0.18, bs=beatSec();
+    const ahead=S.ctx.currentTime+0.18, bpb=beatsPerBar();
     let k=S._metroNext;
     while(true){
-      const t=S.playCtxStart+(k*bs-S.playPosStart);
+      const t=S.playCtxStart+(secAt(k)-S.playPosStart);
       if(t>ahead) break;
-      if(t>=S.ctx.currentTime-0.05) scheduleClick(t,((k%4)+4)%4===0);
+      if(t>=S.ctx.currentTime-0.05) scheduleClick(t,((k%bpb)+bpb)%bpb===0);
       k++;
     }
     S._metroNext=k;
@@ -6193,7 +6481,7 @@ function pitchMonStop(){
   function takeSnap(){
     var mv=document.querySelector("#masterVol");
     var state={
-      bpm:S.bpm, loop:S.loop, autoMode:S.autoMode, snap:S.snap, px:S.px,
+      bpm:S.bpm, timeSig:S.timeSig, beatMap:S.beatMap, loop:S.loop, autoMode:S.autoMode, snap:S.snap, px:S.px,
       revMuted:S.revMuted, dlyMuted:S.dlyMuted, demoLoaded:S.demoLoaded,
       userFxPresets:cloneVal(S.userFxPresets||{}), userMixPresets:cloneVal(S.userMixPresets||[]),
       masterVol: mv ? mv.value : null,
@@ -6207,12 +6495,13 @@ function pitchMonStop(){
     applying=true;
     var s=cloneVal(snap.state);
     S.buses=s.buses; S.tracks=s.tracks;
-    S.bpm=s.bpm; S.loop=s.loop; S.autoMode=s.autoMode; S.snap=s.snap; S.px=s.px;
+    S.bpm=s.bpm; S.timeSig=s.timeSig||{n:4,d:4}; S.beatMap=s.beatMap||null; S.loop=s.loop; S.autoMode=s.autoMode; S.snap=s.snap; S.px=s.px;
     S.revMuted=s.revMuted; S.dlyMuted=s.dlyMuted; S.demoLoaded=s.demoLoaded;
     S.userFxPresets=s.userFxPresets||{}; S.userMixPresets=s.userMixPresets||[];
     S.selTrack=s.selTrack; S.selClip=s.selClip;
     var mv=document.querySelector("#masterVol"); if(mv && s.masterVol!=null) mv.value=s.masterVol;
     var bi=document.querySelector("#bpmIn"); if(bi) bi.value=s.bpm;
+    var tg=document.querySelector("#tsigSel"); if(tg&&S.timeSig) tg.value=S.timeSig.n+"/"+S.timeSig.d;
     var zr=document.querySelector("#zoomR"); if(zr) zr.value=s.px;
     var bs=document.querySelector("#btnSnap"); if(bs) bs.classList.toggle("on", !!s.snap);
     var maxId=0;
