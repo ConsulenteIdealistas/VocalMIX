@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>VocalMIX</title>
-    <link rel="stylesheet" href="app.css?v=15bccfef10">
+    <link rel="stylesheet" href="app.css?v=6caed6a654">
     
     
   
@@ -48,6 +48,7 @@
           <button id="btnDemo">Load Demo Song</button>
           <button id="btnExportGo" style="background:var(--teal);border-color:var(--teal);color:#06231d;font-weight:700">Export</button>
           <a class="navlink" id="btnManualGo" href="manual.html">Manual</a>
+          <button id="btnParams" class="ghost">⚙ Params</button>
         </div>
       </div>
 
@@ -139,7 +140,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=8d8bdea280"></script>
+<script src="app.js?v=34ebb93c23"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -394,7 +395,7 @@
   function scheduleAutosave(){
     if(!asReady) return;
     if(asTimer) clearTimeout(asTimer);
-    asTimer=setTimeout(saveAutosave, 1200);
+    asTimer=setTimeout(saveAutosave, (window.VM_P?window.VM_P("autosave.sec"):1.2)*1000);
   }
   async function saveAutosave(){
     try{

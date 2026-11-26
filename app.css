@@ -535,3 +535,17 @@ button,.tbtn,.strip,.lane{user-select:none;-webkit-user-select:none}
 output{cursor:pointer;border-bottom:1px dotted var(--line,#4a3540)}
 .mini label span{cursor:pointer;border-bottom:1px dotted var(--line,#4a3540)}
 .numedit{width:76px;background:#120b0f;color:var(--tx,#ece2cd);border:1px solid var(--acc,#a8894e);border-radius:6px;padding:2px 6px;font:inherit;font-size:13px}
+
+/* ---------- parameters panel & command bar ---------- */
+.parampanel{position:fixed;top:54px;right:12px;z-index:210;background:#241820;border:1px solid var(--acc);border-radius:12px;padding:12px 14px;box-shadow:0 10px 34px rgba(0,0,0,.55);width:min(350px,92vw);color:var(--tx)}
+.pp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-top:1px solid rgba(255,255,255,.07)}
+.pp-row span{display:flex;flex-direction:column;font-size:13px}
+.pp-row small{color:var(--tx3);font-size:11px}
+.pp-row input{width:92px}
+.pp-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.cmdbar{position:fixed;left:50%;bottom:calc(70px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);z-index:220;display:flex;gap:8px;align-items:center;background:#1d1219;border:1px solid var(--acc);border-radius:10px;padding:7px 10px;box-shadow:0 10px 34px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;width:min(580px,94vw)}
+.cmdbar.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.cmdbar input{flex:1;min-width:0;background:#120b0f;color:var(--tx);border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:6px 8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px}
+.cmdprompt{color:var(--acc);font-weight:700}
+.cmdout{color:var(--tx3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38%}
