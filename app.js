@@ -1,3 +1,4 @@
+window.VM_BUILD="815f9eb";
 
 "use strict";
 /* ============================================================
@@ -4420,6 +4421,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
     }
     h+='<div class="pp-foot"><button class="ghost" id="ppReset">'+(j?"すべて既定に戻す":"Reset all")+'</button><button class="ghost" id="ppExpSet">'+(j?"設定を書き出し":"Export settings")+'</button><button class="ghost" id="ppImpSet">'+(j?"設定を読み込み":"Import settings")+'</button><button class="ghost" id="ppZipExp">'+(j?"プロジェクトzip書き出し":"Export project .zip")+'</button><button class="ghost" id="ppZipImp">'+(j?"プロジェクトzip読み込み":"Import project .zip")+'</button><span class="small">'+(j?"コマンドは「:」キー（help で一覧）":"Commands: press : (try help)")+'</span></div>';
     panel.innerHTML=h;
+    panel.classList.add("open");
     document.body.appendChild(panel);
     panel.querySelector("#ppClose").onclick=close;
     panel.querySelector("#ppReset").onclick=function(){ PARAMS={}; try{ localStorage.removeItem("vocalmix-params"); }catch(e){} close(); open(); toast(j?"パラメータを既定に戻しました":"Parameters reset"); };
@@ -4875,7 +4877,7 @@ function vmLang(){ try{ return localStorage.getItem("vocalmix-lang")||"en"; }cat
   const panel=document.createElement("div");
   panel.className="parampanel snappanel";
   const head=document.createElement("div"); head.className="pp-head";
-  const title=document.createElement("span"); title.textContent=ja()?"スナップショット":"Snapshots";
+  const title=document.createElement("span"); title.textContent=(ja()?"スナップショット":"Snapshots")+(window.VM_BUILD?" · build "+window.VM_BUILD:""); title.style.fontSize="12px";
   const close=document.createElement("button"); close.className="ghost"; close.textContent="✕";
   close.addEventListener("click",function(){ panel.classList.remove("open"); });
   head.appendChild(title); head.appendChild(close);
