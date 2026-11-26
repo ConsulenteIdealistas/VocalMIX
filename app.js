@@ -2137,6 +2137,9 @@ function raf(){
       slider.value=raw.toFixed(dec);
       slider.dispatchEvent(new Event("input", {bubbles:true}));
       slider.dispatchEvent(new Event("change", {bubbles:true}));
+      /* Channel/FX handlers update only their own readout; sync the
+         track headers (which show vol/pan/sends) with one render. */
+      if(typeof renderTimeline==="function") renderTimeline();
     }
     input.addEventListener("keydown", function(ev){
       if(ev.key==="Enter"){ finish(true); }
