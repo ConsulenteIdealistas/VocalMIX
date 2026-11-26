@@ -1,4 +1,4 @@
-window.VM_BUILD="382220b";
+window.VM_BUILD="8a33c09";
 
 "use strict";
 /* ============================================================
@@ -3877,7 +3877,13 @@ const PitchDetect={
     let rms=0; for(let i=0;i<d.length;i++) rms+=d[i]*d[i];
     if(Math.sqrt(rms/d.length)<0.008) return {t,f0:0,voiced:false};
     const W=d.length, df=new Float32Array(tauMax+2), cmnd=new Float32Array(tauMax+2);
-    for(let tau=tauMin;tau<=tauMax;tau++){ let s=0; const lim=W-tau;
+    /* df must be computed from tau=1, not tauMin: the CMND
+       running mean below accumulates df[1..tau], so starting
+       at tauMin leaves the first values out of the mean and
+       inflates cmnd exactly at small tau - high pitches then
+       never cross the threshold at their true period and are
+       read an octave down (B5 988 Hz read as 494). */
+    for(let tau=1;tau<=tauMax;tau++){ let s=0; const lim=W-tau;
       for(let i=0;i<lim;i++){ const dd=d[i]-d[i+tau]; s+=dd*dd; } df[tau]=s; }
     cmnd[0]=1; let run=0;
     for(let tau=1;tau<=tauMax;tau++){ run+=df[tau]; cmnd[tau]=run>0?df[tau]*tau/run:1; }
