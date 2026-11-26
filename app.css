@@ -213,6 +213,14 @@
         .bar-time .big{font-size:15px}
         .bottombar{gap:7px;padding-left:8px;padding-right:8px}
       }
+      .pitchmon{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+        background:var(--bg3);color:var(--tx);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);
+        z-index:59;display:none;align-items:center;gap:12px;padding:8px 16px;font-family:var(--sans-ui);pointer-events:none}
+      .pitchmon.on{display:flex}
+      .pitchmon .pm-note{font-family:var(--serif);font-size:24px;font-weight:700;min-width:56px;text-align:center}
+      .pitchmon .pm-bar{position:relative;width:140px;height:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px}
+      .pitchmon .pm-bar i{position:absolute;top:-3px;width:3px;height:12px;background:var(--acc);border-radius:2px;transform:translateX(-50%)}
+      .pitchmon .pm-cents{font-family:var(--mono);font-size:12px;color:var(--tx2);min-width:130px}
       .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--bg3);color:var(--tx);
         border:1px solid var(--line);border-radius:9px;padding:9px 16px;box-shadow:var(--shadow);z-index:60;display:none;max-width:88vw;pointer-events:none}
       .importpanel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));width:min(520px,92vw);
