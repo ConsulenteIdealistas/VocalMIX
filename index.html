@@ -31,6 +31,7 @@
           <button class="tbtn" id="btnPractice" title="A-B repeat practice: speed rises a step every few loops">P</button>
           <button class="tbtn rec" id="btnRec" title="Record from microphone (R)">●</button>
           <button class="tbtn" id="btnRetake" title="Discard the last take and record again">⟲</button>
+          <button class="tbtn" id="btnMonFx" title="Monitor FX: hear reverb while recording (the take stays dry; use headphones)">🎧</button>
           <button class="tbtn" id="btnMetro" title="Metronome / count-in">♩</button>
           <button class="tbtn" id="btnMark" title="Add marker at playhead">⚑</button>
           <button class="tbtn" id="btnPunch" title="Punch-in recording (trims takes to the loop range)">◉</button>
@@ -158,7 +159,7 @@
     </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-<script src="app.js?v=ec30f78395"></script>
+<script src="app.js?v=e13d752486"></script>
 
 <script>
 /* VocalMIX on GitHub Pages: the Manual and Export live on their own pages.
@@ -194,7 +195,7 @@
     return {
       v:1, bpm:S.bpm, loop:S.loop, autoMode:S.autoMode, snap:S.snap, px:S.px,
       revMuted:S.revMuted, dlyMuted:S.dlyMuted, demoLoaded:S.demoLoaded,
-      userFxPresets:S.userFxPresets, userMixPresets:S.userMixPresets,
+      userFxPresets:S.userFxPresets, userMixPresets:S.userMixPresets, chainPresets:S.chainPresets,
       masterVol: document.querySelector("#masterVol").value,
       limiter: S.limiter?{on:!!S.limiter.on, ceiling:S.limiter.ceiling}:null,
       returns: S.returns ? {decay:S.returns.decay, dlyTime:S.returns.dlyTime, dlyFb:S.returns.dlyFb} : null,
@@ -320,7 +321,7 @@
     S.revMuted=p.revMuted; S.dlyMuted=p.dlyMuted; S.demoLoaded=p.demoLoaded;
     S.markers=p.markers||[]; S.vcas=p.vcas||[];
     if(p.masterChain) S.masterChain=p.masterChain; if(p.masterCompOn!=null) S.masterCompOn=p.masterCompOn;
-    S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[];
+    S.userFxPresets=p.userFxPresets||{}; S.userMixPresets=p.userMixPresets||[]; S.chainPresets=p.chainPresets||[];
     S.selTrack=p.selTrack; S.selClip=p.selClip;
     if(p.masterVol!=null) S.masterVolSaved=p.masterVol;
     if(p.limiter){ S.limiter.on=!!p.limiter.on; if(typeof p.limiter.ceiling==="number") S.limiter.ceiling=p.limiter.ceiling; if(typeof applyLimiterLive==="function") applyLimiterLive(); }
